@@ -34,7 +34,7 @@ export function Sidebar() {
     >
       <div className={cn('flex items-center gap-3 px-5 pt-6 pb-2', collapsed && 'justify-center px-0')}>
         <div className="relative grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-pulse-500 to-aura-500 shadow-glow-sm">
-          <Sparkles size={18} className="text-white" />
+          <Sparkles size={18} className="text-pure" />
           <span className="absolute inset-0 rounded-xl bg-white/20 opacity-0 transition-opacity hover:opacity-100" />
         </div>
         <AnimatePresence>
@@ -73,7 +73,10 @@ export function Sidebar() {
                   transition={{ type: 'spring', stiffness: 380, damping: 32 }}
                 />
               )}
-              <Icon size={19} className="relative z-10 shrink-0 transition-transform duration-200 group-hover:scale-110" />
+              <Icon
+                size={19}
+                className="relative z-10 shrink-0 transition-transform duration-200 group-hover:scale-110"
+              />
               <AnimatePresence>
                 {!collapsed && (
                   <motion.span

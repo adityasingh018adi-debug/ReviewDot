@@ -1,7 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { ReviewStatus } from '@/lib/data'
 
 export const DEFAULT_WIDGET_ORDER = ['trend', 'sentiment', 'activity', 'insights', 'platforms', 'heatmap']
+
+export type Theme = 'dark' | 'light'
 
 interface WorkspaceState {
   sidebarCollapsed: boolean
@@ -14,6 +17,8 @@ interface WorkspaceState {
   setAssistantOpen: (open: boolean) => void
   paletteOpen: boolean
   setPaletteOpen: (open: boolean) => void
+  theme: Theme
+  toggleTheme: () => void
 }
 
 export const useWorkspace = create<WorkspaceState>()(
@@ -29,6 +34,8 @@ export const useWorkspace = create<WorkspaceState>()(
       setAssistantOpen: (assistantOpen) => set({ assistantOpen }),
       paletteOpen: false,
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+      theme: 'dark',
+      toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
     }),
     {
       name: 'reviewdot-workspace',
@@ -36,6 +43,7 @@ export const useWorkspace = create<WorkspaceState>()(
         sidebarCollapsed: s.sidebarCollapsed,
         widgetOrder: s.widgetOrder,
         onboardingDone: s.onboardingDone,
+        theme: s.theme,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<WorkspaceState>
@@ -48,6 +56,38 @@ export const useWorkspace = create<WorkspaceState>()(
         return { ...current, ...p, widgetOrder: order }
       },
     },
+  ),
+)
+
+export interface ReviewOverride {
+  status?: ReviewStatus
+  publishedReply?: string
+}
+
+interface ReviewActionsState {
+  overrides: Record<string, ReviewOverride>
+  publishReply: (reviewId: string, reply: string) => void
+  setStatus: (reviewId: string, status: ReviewStatus) => void
+}
+
+/** Optimistic, locally-persisted review actions — approvals and status changes survive reloads. */
+export const useReviewActions = create<ReviewActionsState>()(
+  persist(
+    (set) => ({
+      overrides: {},
+      publishReply: (reviewId, reply) =>
+        set((s) => ({
+          overrides: {
+            ...s.overrides,
+            [reviewId]: { ...s.overrides[reviewId], status: 'responded', publishedReply: reply },
+          },
+        })),
+      setStatus: (reviewId, status) =>
+        set((s) => ({
+          overrides: { ...s.overrides, [reviewId]: { ...s.overrides[reviewId], status } },
+        })),
+    }),
+    { name: 'reviewdot-review-actions' },
   ),
 )
 

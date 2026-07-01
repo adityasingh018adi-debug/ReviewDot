@@ -1,11 +1,112 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { User, Bot, Plug, Bell, Check, RotateCcw } from 'lucide-react'
+import { User, Bot, Plug, Bell, Check, RotateCcw, Sparkles, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useWorkspace, useToasts, DEFAULT_WIDGET_ORDER } from '@/store/workspace'
+import { useAiConfig, testConnection, AI_MODELS, type AiModelId } from '@/lib/ai'
 import { GlassPanel } from '@/components/ui/GlassPanel'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { cn } from '@/lib/utils'
+
+/** Bring-your-own-key Claude configuration. The key stays in this browser only. */
+function AiConnectionPanel() {
+  const apiKey = useAiConfig((s) => s.apiKey)
+  const model = useAiConfig((s) => s.model)
+  const setApiKey = useAiConfig((s) => s.setApiKey)
+  const setModel = useAiConfig((s) => s.setModel)
+  const pushToast = useToasts((s) => s.push)
+  const [showKey, setShowKey] = useState(false)
+  const [testing, setTesting] = useState(false)
+
+  const runTest = async () => {
+    setTesting(true)
+    const error = await testConnection()
+    setTesting(false)
+    if (error) pushToast({ tone: 'error', title: 'Connection failed', body: error })
+    else pushToast({ tone: 'success', title: 'Connected to Claude', body: 'Aria is now powered by live AI.' })
+  }
+
+  return (
+    <GlassPanel
+      className="p-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.11 }}
+    >
+      <div className="mb-1 flex items-center gap-2">
+        <span className="grid h-8 w-8 place-items-center rounded-lg border border-edge bg-white/4 text-pulse-300">
+          <Sparkles size={15} />
+        </span>
+        <h3 className="font-display flex-1 text-sm font-semibold">Claude connection</h3>
+        {apiKey ? <Badge tone="positive">Live AI</Badge> : <Badge tone="warning">Simulated</Badge>}
+      </div>
+      <p className="mb-4 text-xs leading-relaxed text-mist-400">
+        Add an Anthropic API key to power Aria and reply drafting with real Claude models. The key is stored
+        only in this browser and sent only to Anthropic.
+      </p>
+
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="ai-key" className="mb-1.5 block text-xs font-medium text-mist-300">
+            API key
+          </label>
+          <div className="relative">
+            <input
+              id="ai-key"
+              type={showKey ? 'text' : 'password'}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="sk-ant-…"
+              autoComplete="off"
+              spellCheck={false}
+              className="h-10 w-full rounded-xl border border-edge bg-white/4 pr-10 pl-3 font-mono text-sm text-mist-100 placeholder:text-mist-500 transition-colors outline-none focus:border-pulse-400/50"
+            />
+            <button
+              onClick={() => setShowKey((v) => !v)}
+              aria-label={showKey ? 'Hide API key' : 'Show API key'}
+              className="absolute top-1/2 right-2.5 -translate-y-1/2 text-mist-500 transition-colors hover:text-mist-200"
+            >
+              {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-1.5 text-xs font-medium text-mist-300">Model</div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {AI_MODELS.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setModel(m.id as AiModelId)}
+                className={cn(
+                  'rounded-xl border p-3 text-left transition-all duration-200',
+                  model === m.id
+                    ? 'border-pulse-400/50 bg-pulse-500/12 shadow-glow-sm'
+                    : 'border-edge bg-white/3 hover:border-white/20',
+                )}
+              >
+                <div className="text-xs font-semibold text-mist-100">{m.label}</div>
+                <div className="mt-0.5 text-[10px] leading-snug text-mist-400">{m.hint}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="primary" size="sm" disabled={!apiKey || testing} onClick={() => void runTest()}>
+            {testing ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+            {testing ? 'Testing…' : 'Test connection'}
+          </Button>
+          {apiKey && (
+            <Button variant="ghost" size="sm" onClick={() => setApiKey('')}>
+              Disconnect
+            </Button>
+          )}
+        </div>
+      </div>
+    </GlassPanel>
+  )
+}
 
 function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
@@ -22,7 +123,10 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
       <motion.span
         layout
         transition={{ type: 'spring', stiffness: 500, damping: 32 }}
-        className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow', on ? 'left-[22px]' : 'left-0.5')}
+        className={cn(
+          'absolute top-0.5 h-5 w-5 rounded-full bg-pure shadow',
+          on ? 'left-[22px]' : 'left-0.5',
+        )}
       />
     </button>
   )
@@ -60,9 +164,14 @@ export function Settings() {
         <p className="mt-1 text-sm text-mist-400">Workspace, AI behavior, and integrations.</p>
       </motion.div>
 
-      <GlassPanel className="p-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+      <GlassPanel
+        className="p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08 }}
+      >
         <div className="flex items-center gap-4">
-          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-cyan-glow/70 to-pulse-500 text-lg font-bold text-white ring-2 ring-white/10">
+          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-cyan-glow/70 to-pulse-500 text-lg font-bold text-pure ring-2 ring-white/10">
             MS
           </span>
           <div className="flex-1">
@@ -78,7 +187,14 @@ export function Settings() {
         </div>
       </GlassPanel>
 
-      <GlassPanel className="p-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
+      <AiConnectionPanel />
+
+      <GlassPanel
+        className="p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.14 }}
+      >
         <div className="mb-4 flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-lg border border-white/8 bg-white/4 text-aura-400">
             <Bot size={15} />
@@ -90,7 +206,11 @@ export function Settings() {
             [
               ['autoDraft', 'Auto-draft replies', 'Aria drafts a reply for every incoming review'],
               ['toneMatch', 'Tone matching', 'Match each customer’s writing style and formality'],
-              ['autoPublish', 'Auto-publish 5★ replies', 'Publish drafts for top-rated reviews without approval'],
+              [
+                'autoPublish',
+                'Auto-publish 5★ replies',
+                'Publish drafts for top-rated reviews without approval',
+              ],
             ] as const
           ).map(([key, label, desc]) => (
             <div key={key} className="flex items-center justify-between gap-4">
@@ -104,7 +224,12 @@ export function Settings() {
         </div>
       </GlassPanel>
 
-      <GlassPanel className="p-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+      <GlassPanel
+        className="p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
         <div className="mb-4 flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-lg border border-white/8 bg-white/4 text-cyan-glow">
             <Bell size={15} />
@@ -130,7 +255,12 @@ export function Settings() {
         </div>
       </GlassPanel>
 
-      <GlassPanel className="p-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}>
+      <GlassPanel
+        className="p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.26 }}
+      >
         <div className="mb-4 flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-lg border border-white/8 bg-white/4 text-mint-400">
             <Plug size={15} />
@@ -163,7 +293,12 @@ export function Settings() {
         </div>
       </GlassPanel>
 
-      <GlassPanel className="p-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}>
+      <GlassPanel
+        className="p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.32 }}
+      >
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="text-sm font-medium text-mist-100">Reset dashboard layout</div>
@@ -174,7 +309,11 @@ export function Settings() {
             size="sm"
             onClick={() => {
               setWidgetOrder([...DEFAULT_WIDGET_ORDER])
-              pushToast({ tone: 'success', title: 'Layout reset', body: 'Dashboard widgets restored to default.' })
+              pushToast({
+                tone: 'success',
+                title: 'Layout reset',
+                body: 'Dashboard widgets restored to default.',
+              })
             }}
           >
             <RotateCcw size={13} /> Reset

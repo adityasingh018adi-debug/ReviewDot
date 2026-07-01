@@ -11,7 +11,18 @@ npm run build    # type-check + production build
 npm run preview  # serve the production build
 ```
 
+```bash
+npm run lint      # ESLint
+npm test          # Vitest unit tests
+npm run test:e2e  # Playwright smoke tests
+```
+
 ## Highlights
+
+- **Real AI (bring your own key)** — add an Anthropic API key in Settings and Aria plus reply drafting run on live Claude models (Opus 4.8 / Sonnet 5 / Haiku 4.5) with true streaming; without a key everything gracefully falls back to a built-in simulation. The key is stored only in the browser.
+- **Dual themes** — dark and light, persisted, switchable from the topbar or ⌘K palette.
+- **Resilient** — global error boundary with recovery, 404 page, CI (lint + unit + e2e) with automatic GitHub Pages deploys.
+- **Stateful demo** — approved replies and review statuses persist locally; CSV exports actually download.
 
 - **Premium layout** — floating collapsible sidebar (state persisted), sticky top navigation with global search, ⌘K command palette, mobile bottom tab bar.
 - **3D interface** — pointer-tracked tilt cards with light glare, parallax aurora background with floating abstract shapes, depth-layered glass panels.
@@ -25,7 +36,7 @@ npm run preview  # serve the production build
 
 ## Stack
 
-React 18 · TypeScript · Vite · Tailwind CSS v4 · Framer Motion · Zustand · React Router
+React 18 · TypeScript · Vite · Tailwind CSS v4 · Framer Motion · Zustand · React Router · Anthropic SDK · Vitest · Playwright
 
 ## Structure
 
@@ -42,4 +53,4 @@ src/
   lib/          mock data, hooks, utilities
 ```
 
-All data is simulated in-memory so the product experience can be explored end-to-end without a backend.
+Review data is simulated in-memory so the product experience can be explored end-to-end without a backend; AI features become fully live once an Anthropic API key is added in Settings.

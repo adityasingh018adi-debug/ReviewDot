@@ -1,7 +1,18 @@
 import { useEffect, useState, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react'
 import { motion, useDragControls } from 'framer-motion'
-import { GripVertical, Download, ArrowUpRight, Activity, PieChart, LineChart, Grid3X3, Sparkles, BarChartHorizontal } from 'lucide-react'
+import {
+  GripVertical,
+  Download,
+  ArrowUpRight,
+  Activity,
+  PieChart,
+  LineChart,
+  Grid3X3,
+  Sparkles,
+  BarChartHorizontal,
+} from 'lucide-react'
 import { useWorkspace, useToasts } from '@/store/workspace'
+import { exportAnalyticsCsv } from '@/lib/export'
 import { useInterval } from '@/lib/hooks'
 import { kpis, trendSeries, sentimentSplit, platformVolumes, heatmapData } from '@/lib/data'
 import { KpiCard } from '@/components/dashboard/KpiCard'
@@ -245,7 +256,10 @@ export function Dashboard() {
         <Button
           variant="glass"
           size="md"
-          onClick={() => pushToast({ tone: 'info', title: 'Export started', body: 'Your report will be emailed shortly.' })}
+          onClick={() => {
+            exportAnalyticsCsv()
+            pushToast({ tone: 'success', title: 'Export ready', body: 'reviewdot-analytics.csv downloaded.' })
+          }}
         >
           <Download size={15} /> Export report
         </Button>

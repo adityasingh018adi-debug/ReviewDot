@@ -1,19 +1,9 @@
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
-import {
-  Star,
-  Search,
-  Sparkles,
-  Check,
-  RefreshCw,
-  MapPin,
-  ThumbsUp,
-  ChevronDown,
-  Inbox,
-} from 'lucide-react'
+import { Star, Search, Sparkles, Check, RefreshCw, MapPin, ThumbsUp, ChevronDown, Inbox } from 'lucide-react'
 import { reviews, type Review, type Sentiment, type ReviewStatus } from '@/lib/data'
-import { useToasts } from '@/store/workspace'
-import { useStreamedText } from '@/lib/hooks'
+import { useToasts, useReviewActions } from '@/store/workspace'
+import { streamReviewReply, aiIsLive } from '@/lib/ai'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { cn, timeAgo } from '@/lib/utils'
@@ -24,7 +14,10 @@ const sentimentTone: Record<Sentiment, 'positive' | 'neutral' | 'negative'> = {
   negative: 'negative',
 }
 
-const statusMeta: Record<ReviewStatus, { label: string; tone: 'accent' | 'warning' | 'positive' | 'negative' }> = {
+const statusMeta: Record<
+  ReviewStatus,
+  { label: string; tone: 'accent' | 'warning' | 'positive' | 'negative' }
+> = {
   new: { label: 'New', tone: 'accent' },
   'in-progress': { label: 'In progress', tone: 'warning' },
   responded: { label: 'Responded', tone: 'positive' },
@@ -56,17 +49,53 @@ function Stars({ rating }: { rating: number }) {
   )
 }
 
-/** AI reply preview that streams in, then offers approve/regenerate. */
+/** AI reply preview: streams a Claude-drafted reply (or simulation), then approve/regenerate. */
 function AiReplyPanel({ review }: { review: Review }) {
-  const [generation, setGeneration] = useState(0)
-  const [approved, setApproved] = useState(false)
+  const [text, setText] = useState('')
+  const [phase, setPhase] = useState<'idle' | 'drafting' | 'ready'>('idle')
   const pushToast = useToasts((s) => s.push)
-  const { text, done } = useStreamedText(generation > 0 ? review.aiReply : null, 10)
+  const publishedReply = useReviewActions((s) => s.overrides[review.id]?.publishedReply)
+  const publishReply = useReviewActions((s) => s.publishReply)
 
-  if (generation === 0) {
+  const generate = async () => {
+    setPhase('drafting')
+    setText('')
+    try {
+      const full = await streamReviewReply(review, {
+        onText: (delta) => setText((t) => t + delta),
+      })
+      setText(full)
+      setPhase('ready')
+    } catch (err) {
+      setPhase('idle')
+      pushToast({
+        tone: 'error',
+        title: 'Draft failed',
+        body: err instanceof Error ? err.message : 'Check your AI settings and try again.',
+      })
+    }
+  }
+
+  if (publishedReply) {
     return (
-      <Button variant="glass" size="sm" onClick={() => setGeneration(1)} className="border-pulse-400/30">
+      <div className="rounded-xl border border-mint-400/25 bg-mint-400/6 p-4">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-mint-400">
+          <Check size={13} /> Published to {review.platform}
+        </div>
+        <p className="text-sm leading-relaxed text-mist-300">{publishedReply}</p>
+      </div>
+    )
+  }
+
+  if (phase === 'idle') {
+    return (
+      <Button variant="glass" size="sm" onClick={() => void generate()} className="border-pulse-400/30">
         <Sparkles size={13} className="text-aura-400" /> Generate AI reply
+        {aiIsLive() && (
+          <Badge tone="accent" className="ml-1">
+            Claude
+          </Badge>
+        )}
       </Button>
     )
   }
@@ -80,40 +109,37 @@ function AiReplyPanel({ review }: { review: Review }) {
       <div className="rounded-xl border border-pulse-400/25 bg-pulse-500/8 p-4">
         <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-pulse-300">
           <Sparkles size={13} /> Aria’s suggested reply
-          {!done && <span className="text-mist-500 font-normal">drafting…</span>}
+          {phase === 'drafting' && <span className="text-mist-500 font-normal">drafting…</span>}
         </div>
-        <p className="text-sm leading-relaxed text-mist-200">
+        <p className="text-sm leading-relaxed whitespace-pre-wrap text-mist-200">
           {text}
-          {!done && <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-pulse-300 align-middle" />}
+          {phase === 'drafting' && (
+            <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-pulse-300 align-middle" />
+          )}
         </p>
-        {done && !approved && (
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-3 flex gap-2">
+        {phase === 'ready' && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 flex gap-2"
+          >
             <Button
               variant="primary"
               size="sm"
               onClick={() => {
-                setApproved(true)
-                pushToast({ tone: 'success', title: 'Reply published', body: `Response to ${review.author} is live on ${review.platform}.` })
+                publishReply(review.id, text)
+                pushToast({
+                  tone: 'success',
+                  title: 'Reply published',
+                  body: `Response to ${review.author} is live on ${review.platform}.`,
+                })
               }}
             >
               <Check size={13} /> Approve & publish
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setGeneration((g) => g + 1)}>
+            <Button variant="ghost" size="sm" onClick={() => void generate()}>
               <RefreshCw size={13} /> Regenerate
             </Button>
-          </motion.div>
-        )}
-        {approved && (
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-            className="mt-3 flex items-center gap-2 text-sm font-medium text-mint-400"
-          >
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-mint-400/15">
-              <Check size={13} />
-            </span>
-            Published to {review.platform}
           </motion.div>
         )}
       </div>
@@ -121,8 +147,19 @@ function AiReplyPanel({ review }: { review: Review }) {
   )
 }
 
-function ReviewCard({ review, index, expanded, onToggle }: { review: Review; index: number; expanded: boolean; onToggle: () => void }) {
-  const status = statusMeta[review.status]
+function ReviewCard({
+  review,
+  index,
+  expanded,
+  onToggle,
+}: {
+  review: Review
+  index: number
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const statusOverride = useReviewActions((s) => s.overrides[review.id]?.status)
+  const status = statusMeta[statusOverride ?? review.status]
 
   return (
     <motion.article
@@ -154,7 +191,9 @@ function ReviewCard({ review, index, expanded, onToggle }: { review: Review; ind
             <span className="text-xs text-mist-500">· {timeAgo(review.date)}</span>
           </div>
           <h3 className="mt-1 truncate text-sm font-medium text-mist-100">{review.title}</h3>
-          <p className={cn('mt-1 text-sm leading-relaxed text-mist-400', !expanded && 'line-clamp-2')}>{review.body}</p>
+          <p className={cn('mt-1 text-sm leading-relaxed text-mist-400', !expanded && 'line-clamp-2')}>
+            {review.body}
+          </p>
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             <Badge tone={sentimentTone[review.sentiment]}>{review.sentiment}</Badge>
             <Badge tone={status.tone}>{status.label}</Badge>
@@ -224,10 +263,12 @@ export function Reviews() {
   const [filter, setFilter] = useState<FilterId>('all')
   const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const overrides = useReviewActions((s) => s.overrides)
 
   const filtered = useMemo(() => {
     let list = reviews
-    if (filter === 'escalated') list = list.filter((r) => r.status === 'escalated')
+    if (filter === 'escalated')
+      list = list.filter((r) => (overrides[r.id]?.status ?? r.status) === 'escalated')
     else if (filter !== 'all') list = list.filter((r) => r.sentiment === filter)
     if (query.trim()) {
       const q = query.toLowerCase()
@@ -240,14 +281,15 @@ export function Reviews() {
       )
     }
     return list
-  }, [filter, query])
+  }, [filter, query, overrides])
 
   return (
     <div className="space-y-5">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="font-display text-2xl font-bold tracking-tight md:text-3xl">Reviews</h1>
         <p className="mt-1 text-sm text-mist-400">
-          {reviews.length} reviews across 5 platforms · {reviews.filter((r) => r.status === 'new').length} awaiting response
+          {reviews.length} reviews across 5 platforms · {reviews.filter((r) => r.status === 'new').length}{' '}
+          awaiting response
         </p>
       </motion.div>
 
@@ -283,7 +325,10 @@ export function Reviews() {
         </LayoutGroup>
 
         <div className="relative ml-auto min-w-[180px] flex-1 sm:max-w-xs">
-          <Search size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-mist-500" />
+          <Search
+            size={14}
+            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-mist-500"
+          />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}

@@ -5,7 +5,12 @@ import { useToasts } from '@/store/workspace'
 import { Badge } from '@/components/ui/Badge'
 
 const toneMeta = {
-  opportunity: { Icon: Lightbulb, label: 'Opportunity', badge: 'positive' as const, glow: 'rgb(67 222 160 / 0.12)' },
+  opportunity: {
+    Icon: Lightbulb,
+    label: 'Opportunity',
+    badge: 'positive' as const,
+    glow: 'rgb(67 222 160 / 0.12)',
+  },
   risk: { Icon: ShieldAlert, label: 'Risk', badge: 'negative' as const, glow: 'rgb(251 109 136 / 0.12)' },
   trend: { Icon: TrendingUp, label: 'Trend', badge: 'info' as const, glow: 'rgb(76 224 224 / 0.12)' },
 }
@@ -33,7 +38,10 @@ export function InsightCards() {
               className="absolute inset-y-0 left-0 w-1 rounded-full transition-all duration-300 group-hover:w-1.5"
               style={{ background: meta.glow.replace('0.12', '0.8') }}
             />
-            <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full blur-3xl" style={{ background: meta.glow }} />
+            <div
+              className="absolute -top-12 -right-12 h-32 w-32 rounded-full blur-3xl"
+              style={{ background: meta.glow }}
+            />
 
             <div className="relative flex items-start gap-3 pl-2">
               <motion.span

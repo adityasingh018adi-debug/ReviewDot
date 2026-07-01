@@ -15,13 +15,12 @@ export function DonutChart({ data, size = 190 }: { data: Slice[]; size?: number 
   const r = (size - stroke) / 2 - 6
   const c = 2 * Math.PI * r
 
-  let offset = 0
-  const slices = data.map((d) => {
-    const frac = d.value / total
-    const s = { ...d, frac, start: offset }
-    offset += frac
-    return s
-  })
+  const fracs = data.map((d) => d.value / total)
+  const slices = data.map((d, i) => ({
+    ...d,
+    frac: fracs[i],
+    start: fracs.slice(0, i).reduce((a, b) => a + b, 0),
+  }))
 
   // when idle, spotlight the dominant slice
   const dominant = data.reduce((a, b) => (b.value > a.value ? b : a), data[0])
@@ -30,7 +29,13 @@ export function DonutChart({ data, size = 190 }: { data: Slice[]; size?: number 
   return (
     <div className="flex items-center gap-6">
       <div className="relative shrink-0" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="-rotate-90">
+        <svg
+          width={size}
+          height={size}
+          className="-rotate-90"
+          role="img"
+          aria-label={`Donut chart: ${data.map((d) => `${d.name} ${d.value}%`).join(', ')}`}
+        >
           {slices.map((s, i) => (
             <motion.circle
               key={s.name}
@@ -77,7 +82,10 @@ export function DonutChart({ data, size = 190 }: { data: Slice[]; size?: number 
             onPointerLeave={() => setActive(null)}
             className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1 text-left text-sm transition-colors hover:bg-white/5"
           >
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color, boxShadow: `0 0 8px ${d.color}88` }} />
+            <span
+              className="h-2.5 w-2.5 rounded-full"
+              style={{ background: d.color, boxShadow: `0 0 8px ${d.color}88` }}
+            />
             <span className="flex-1 text-mist-300">{d.name}</span>
             <span className="font-display font-semibold text-mist-100">{d.value}%</span>
           </button>

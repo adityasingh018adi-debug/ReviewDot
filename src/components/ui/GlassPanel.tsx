@@ -11,7 +11,8 @@ export function GlassPanel({ className, hover = false, children, ...props }: Gla
     <motion.div
       className={cn(
         'glass rounded-2xl shadow-panel',
-        hover && 'transition-[border-color,box-shadow] duration-300 hover:border-white/20 hover:shadow-glow-sm',
+        hover &&
+          'transition-[border-color,box-shadow] duration-300 hover:border-white/20 hover:shadow-glow-sm',
         className,
       )}
       {...props}

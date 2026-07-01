@@ -27,7 +27,9 @@ export function useCountUp(target: number, duration = 1200, decimals = 0) {
 /** Global keyboard shortcut. `combo` example: "mod+k", "escape", "g d". */
 export function useHotkey(combo: string, handler: (e: KeyboardEvent) => void, enabled = true) {
   const handlerRef = useRef(handler)
-  handlerRef.current = handler
+  useEffect(() => {
+    handlerRef.current = handler
+  })
 
   useEffect(() => {
     if (!enabled) return
@@ -64,39 +66,12 @@ export function useMediaQuery(query: string) {
 /** Re-renders on an interval — used for live timestamps and simulated realtime data. */
 export function useInterval(callback: () => void, delayMs: number | null) {
   const saved = useRef(callback)
-  saved.current = callback
+  useEffect(() => {
+    saved.current = callback
+  })
   useEffect(() => {
     if (delayMs === null) return
     const id = setInterval(() => saved.current(), delayMs)
     return () => clearInterval(id)
   }, [delayMs])
-}
-
-/** Fake token-streaming for AI responses. Returns streamed text + done flag. */
-export function useStreamedText(fullText: string | null, speed = 14) {
-  const [text, setText] = useState('')
-  const [done, setDone] = useState(false)
-
-  useEffect(() => {
-    if (!fullText) {
-      setText('')
-      setDone(false)
-      return
-    }
-    setText('')
-    setDone(false)
-    let i = 0
-    const id = setInterval(() => {
-      // stream in word-ish chunks for a natural cadence
-      i += 2 + Math.floor(Math.random() * 3)
-      setText(fullText.slice(0, i))
-      if (i >= fullText.length) {
-        clearInterval(id)
-        setDone(true)
-      }
-    }, speed)
-    return () => clearInterval(id)
-  }, [fullText, speed])
-
-  return { text, done }
 }

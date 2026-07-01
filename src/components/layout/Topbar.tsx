@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Bell, Plus, Command, Star, MessageSquareText, TrendingUp } from 'lucide-react'
+import { Search, Bell, Plus, Command, Star, MessageSquareText, TrendingUp, Sun, Moon } from 'lucide-react'
 import { useWorkspace, useToasts } from '@/store/workspace'
 import { reviews } from '@/lib/data'
 import { Button } from '@/components/ui/Button'
@@ -10,12 +10,20 @@ import { cn, timeAgo } from '@/lib/utils'
 const notifications = [
   { id: 1, icon: Star, text: 'New 5★ review from Ava Chen', time: '2m ago', unread: true },
   { id: 2, icon: TrendingUp, text: 'Weekly sentiment report is ready', time: '1h ago', unread: true },
-  { id: 3, icon: MessageSquareText, text: '4 AI reply drafts awaiting approval', time: '3h ago', unread: false },
+  {
+    id: 3,
+    icon: MessageSquareText,
+    text: '4 AI reply drafts awaiting approval',
+    time: '3h ago',
+    unread: false,
+  },
 ]
 
 /** Sticky top navigation: global search, quick actions, notifications. */
 export function Topbar() {
   const setPaletteOpen = useWorkspace((s) => s.setPaletteOpen)
+  const theme = useWorkspace((s) => s.theme)
+  const toggleTheme = useWorkspace((s) => s.toggleTheme)
   const pushToast = useToasts((s) => s.push)
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
@@ -49,9 +57,12 @@ export function Topbar() {
       transition={{ type: 'spring', stiffness: 260, damping: 26, delay: 0.08 }}
       className="glass-strong sticky top-4 z-30 flex items-center gap-3 rounded-2xl px-4 py-3 shadow-panel"
     >
-      {/* global search */}
+      {/* workspace-wide search */}
       <div className="relative flex-1 max-w-md">
-        <Search size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-mist-500" />
+        <Search
+          size={16}
+          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-mist-500"
+        />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -114,15 +125,41 @@ export function Topbar() {
           size="sm"
           className="hidden sm:inline-flex"
           onClick={() =>
-            pushToast({ tone: 'success', title: 'Source connected', body: 'New review source is now syncing.' })
+            pushToast({
+              tone: 'success',
+              title: 'Source connected',
+              body: 'New review source is now syncing.',
+            })
           }
         >
           <Plus size={14} /> Connect source
         </Button>
 
+        {/* theme toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          <motion.span
+            key={theme}
+            initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
+            animate={{ rotate: 0, opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 18 }}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </motion.span>
+        </Button>
+
         {/* notifications */}
         <div className="relative" ref={notifRef}>
-          <Button variant="ghost" size="icon" onClick={() => setNotifOpen((o) => !o)} aria-label="Notifications">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setNotifOpen((o) => !o)}
+            aria-label="Notifications"
+          >
             <Bell size={18} />
             <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
               <span className="absolute h-full w-full animate-ping rounded-full bg-pulse-400 opacity-70" />
@@ -171,7 +208,7 @@ export function Topbar() {
 
         {/* profile */}
         <button className="group flex items-center gap-2.5 rounded-xl py-1 pr-1 pl-1 transition-colors hover:bg-white/5 sm:pr-3">
-          <span className="relative grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-cyan-glow/70 to-pulse-500 text-xs font-bold text-white ring-2 ring-white/10 transition-transform group-hover:scale-105">
+          <span className="relative grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-cyan-glow/70 to-pulse-500 text-xs font-bold text-pure ring-2 ring-white/10 transition-transform group-hover:scale-105">
             MS
             <span className="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-ink-900 bg-mint-400" />
           </span>

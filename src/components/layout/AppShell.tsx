@@ -22,7 +22,10 @@ function CursorGlow() {
     const onMove = (e: PointerEvent) => {
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(() => {
-        ref.current?.style.setProperty('transform', `translate3d(${e.clientX - 200}px, ${e.clientY - 200}px, 0)`)
+        ref.current?.style.setProperty(
+          'transform',
+          `translate3d(${e.clientX - 200}px, ${e.clientY - 200}px, 0)`,
+        )
       })
     }
     window.addEventListener('pointermove', onMove, { passive: true })
@@ -47,8 +50,13 @@ export function AppShell() {
   const collapsed = useWorkspace((s) => s.sidebarCollapsed)
   const toggleSidebar = useWorkspace((s) => s.toggleSidebar)
   const setAssistantOpen = useWorkspace((s) => s.setAssistantOpen)
+  const theme = useWorkspace((s) => s.theme)
   const location = useLocation()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+  }, [theme])
 
   // workspace-level shortcuts (skip when typing in a field)
   const notTyping = (e: KeyboardEvent) => {

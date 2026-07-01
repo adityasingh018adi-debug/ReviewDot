@@ -9,7 +9,11 @@ export function Heatmap({ data }: { data: number[][] }) {
   const max = Math.max(...data.flat()) || 1
 
   return (
-    <div className="space-y-1.5">
+    <div
+      className="space-y-1.5"
+      role="img"
+      aria-label="Heatmap of review volume by day of week and hour of day. Weekday business hours are busiest, peaking around midday."
+    >
       {data.map((row, d) => (
         <div key={d} className="flex items-center gap-1.5">
           <span className="w-8 shrink-0 text-[10px] text-mist-500">{DAYS[d]}</span>

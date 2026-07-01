@@ -36,15 +36,24 @@ export function AuroraBackground() {
         />
         <div
           className="animate-aurora absolute top-1/3 -right-52 h-[38rem] w-[38rem] rounded-full blur-[130px]"
-          style={{ background: 'radial-gradient(circle, rgb(168 85 247 / 0.16), transparent 65%)', animationDelay: '-9s' }}
+          style={{
+            background: 'radial-gradient(circle, rgb(168 85 247 / 0.16), transparent 65%)',
+            animationDelay: '-9s',
+          }}
         />
         <div
           className="animate-aurora absolute -bottom-60 left-1/4 h-[36rem] w-[36rem] rounded-full blur-[130px]"
-          style={{ background: 'radial-gradient(circle, rgb(76 224 224 / 0.10), transparent 65%)', animationDelay: '-17s' }}
+          style={{
+            background: 'radial-gradient(circle, rgb(76 224 224 / 0.10), transparent 65%)',
+            animationDelay: '-17s',
+          }}
         />
 
         {/* floating abstract shapes */}
-        <div className="animate-float-slow absolute top-[18%] right-[14%] hidden lg:block" style={{ animationDelay: '-2s' }}>
+        <div
+          className="animate-float-slow absolute top-[18%] right-[14%] hidden lg:block"
+          style={{ animationDelay: '-2s' }}
+        >
           <div
             className="h-24 w-24 rounded-3xl border border-white/8 opacity-70"
             style={{
@@ -54,11 +63,15 @@ export function AuroraBackground() {
             }}
           />
         </div>
-        <div className="animate-float-slow absolute bottom-[22%] left-[8%] hidden lg:block" style={{ animationDelay: '-5s' }}>
+        <div
+          className="animate-float-slow absolute bottom-[22%] left-[8%] hidden lg:block"
+          style={{ animationDelay: '-5s' }}
+        >
           <div
             className="h-16 w-16 rounded-full border border-white/8 opacity-60"
             style={{
-              background: 'radial-gradient(circle at 30% 30%, rgb(76 224 224 / 0.22), rgb(97 114 243 / 0.05))',
+              background:
+                'radial-gradient(circle at 30% 30%, rgb(76 224 224 / 0.22), rgb(97 114 243 / 0.05))',
               boxShadow: 'inset 0 1px 0 rgb(255 255 255 / 0.15), 0 24px 48px -16px rgb(0 0 0 / 0.55)',
             }}
           />

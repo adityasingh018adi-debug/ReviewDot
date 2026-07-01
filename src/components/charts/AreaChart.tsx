@@ -40,7 +40,10 @@ export function AreaChart({ labels, series, height = 260 }: AreaChartProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const max = useMemo(() => Math.max(...series.flatMap((s) => s.values)) * 1.15, [series])
 
-  const paths = useMemo(() => series.map((s) => ({ ...s, ...buildPath(s.values, max, height) })), [series, max, height])
+  const paths = useMemo(
+    () => series.map((s) => ({ ...s, ...buildPath(s.values, max, height) })),
+    [series, max, height],
+  )
   const ih = height - PAD.top - PAD.bottom
   const iw = W - PAD.left - PAD.right
 
@@ -58,6 +61,8 @@ export function AreaChart({ labels, series, height = 260 }: AreaChartProps) {
       <svg
         viewBox={`0 0 ${W} ${height}`}
         className="w-full touch-none"
+        role="img"
+        aria-label={`Line chart of ${series.map((s) => s.name).join(' and ')} across ${labels.length} periods. Latest values: ${series.map((s) => `${s.name} ${s.values[s.values.length - 1].toLocaleString()}`).join(', ')}.`}
         onPointerMove={onMove}
         onPointerLeave={() => setHoverIdx(null)}
       >
@@ -160,7 +165,8 @@ export function AreaChart({ labels, series, height = 260 }: AreaChartProps) {
             {series.map((s) => (
               <div key={s.name} className="flex items-center gap-2 text-mist-300">
                 <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
-                {s.name}: <span className="font-medium text-mist-50">{s.values[hoverIdx].toLocaleString()}</span>
+                {s.name}:{' '}
+                <span className="font-medium text-mist-50">{s.values[hoverIdx].toLocaleString()}</span>
               </div>
             ))}
           </motion.div>

@@ -5,7 +5,12 @@ import { AnimatedNumber } from '@/components/ui/AnimatedNumber'
 import { Sparkline } from '@/components/charts/Sparkline'
 import type { KpiSeed } from '@/lib/data'
 
-const accents = ['var(--color-pulse-400)', 'var(--color-cyan-glow)', 'var(--color-mint-400)', 'var(--color-aura-400)']
+const accents = [
+  'var(--color-pulse-400)',
+  'var(--color-cyan-glow)',
+  'var(--color-mint-400)',
+  'var(--color-aura-400)',
+]
 
 export function KpiCard({ kpi, index, live }: { kpi: KpiSeed; index: number; live: number }) {
   const up = kpi.delta >= 0
@@ -27,7 +32,12 @@ export function KpiCard({ kpi, index, live }: { kpi: KpiSeed; index: number; liv
             <div>
               <div className="text-xs font-medium tracking-wide text-mist-400 uppercase">{kpi.label}</div>
               <div className="font-display mt-2 text-3xl font-bold text-mist-50">
-                <AnimatedNumber value={live} decimals={kpi.decimals ?? 0} prefix={kpi.prefix} suffix={kpi.suffix} />
+                <AnimatedNumber
+                  value={live}
+                  decimals={kpi.decimals ?? 0}
+                  prefix={kpi.prefix}
+                  suffix={kpi.suffix}
+                />
               </div>
             </div>
             <span

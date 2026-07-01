@@ -64,7 +64,7 @@ export function Onboarding() {
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             >
               <div className="animate-orb relative mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-pulse-500 to-aura-500 shadow-glow">
-                <Icon size={28} className="text-white" />
+                <Icon size={28} className="text-pure" />
               </div>
               <h2 className="font-display mt-6 text-xl font-bold text-mist-50">{current.title}</h2>
               <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-mist-300">{current.body}</p>

@@ -38,7 +38,9 @@ export function Analytics() {
       >
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight md:text-3xl">Analytics</h1>
-          <p className="mt-1 text-sm text-mist-400">Drill into reputation performance across every dimension.</p>
+          <p className="mt-1 text-sm text-mist-400">
+            Drill into reputation performance across every dimension.
+          </p>
         </div>
 
         <LayoutGroup id="range">
@@ -83,8 +85,16 @@ export function Analytics() {
             key={range}
             labels={trendSeries.labels}
             series={[
-              { name: 'Reviews', color: 'var(--color-pulse-400)', values: scaleSeries(trendSeries.reviews, range) },
-              { name: 'Responses', color: 'var(--color-cyan-glow)', values: scaleSeries(trendSeries.responses, range) },
+              {
+                name: 'Reviews',
+                color: 'var(--color-pulse-400)',
+                values: scaleSeries(trendSeries.reviews, range),
+              },
+              {
+                name: 'Responses',
+                color: 'var(--color-cyan-glow)',
+                values: scaleSeries(trendSeries.responses, range),
+              },
             ]}
           />
         </GlassPanel>
@@ -107,8 +117,8 @@ export function Analytics() {
             ))}
           </div>
           <div className="mt-2 rounded-xl border border-white/8 bg-white/3 p-3 text-xs leading-relaxed text-mist-400">
-            Composite quality is <span className="font-semibold text-mist-100">A+</span>. Reply quality rose 4 points
-            after enabling tone-matched AI drafts.
+            Composite quality is <span className="font-semibold text-mist-100">A+</span>. Reply quality rose 4
+            points after enabling tone-matched AI drafts.
           </div>
         </GlassPanel>
 

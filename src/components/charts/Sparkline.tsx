@@ -7,7 +7,12 @@ interface SparklineProps {
   height?: number
 }
 
-export function Sparkline({ values, color = 'var(--color-pulse-400)', width = 120, height = 36 }: SparklineProps) {
+export function Sparkline({
+  values,
+  color = 'var(--color-pulse-400)',
+  width = 120,
+  height = 36,
+}: SparklineProps) {
   const max = Math.max(...values)
   const min = Math.min(...values)
   const range = max - min || 1
@@ -24,7 +29,13 @@ export function Sparkline({ values, color = 'var(--color-pulse-400)', width = 12
   const gradId = `spark-${color.replace(/[^a-z0-9]/gi, '')}`
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      className="overflow-visible"
+      aria-hidden="true"
+    >
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity={0.3} />

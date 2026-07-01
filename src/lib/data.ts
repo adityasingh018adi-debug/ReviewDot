@@ -51,12 +51,55 @@ export interface KpiSeed {
   spark: number[]
 }
 
-const firstNames = ['Ava', 'Liam', 'Sofia', 'Noah', 'Maya', 'Ethan', 'Zara', 'Kai', 'Priya', 'Marcus', 'Elena', 'Jonas', 'Nina', 'Omar', 'Lucia', 'Felix']
-const lastNames = ['Chen', 'Okafor', 'Ramos', 'Novak', 'Patel', 'Kim', 'Costa', 'Berg', 'Ali', 'Moreau', 'Tanaka', 'Weiss', 'Silva', 'Kaur', 'Ross', 'Iversen']
+const firstNames = [
+  'Ava',
+  'Liam',
+  'Sofia',
+  'Noah',
+  'Maya',
+  'Ethan',
+  'Zara',
+  'Kai',
+  'Priya',
+  'Marcus',
+  'Elena',
+  'Jonas',
+  'Nina',
+  'Omar',
+  'Lucia',
+  'Felix',
+]
+const lastNames = [
+  'Chen',
+  'Okafor',
+  'Ramos',
+  'Novak',
+  'Patel',
+  'Kim',
+  'Costa',
+  'Berg',
+  'Ali',
+  'Moreau',
+  'Tanaka',
+  'Weiss',
+  'Silva',
+  'Kaur',
+  'Ross',
+  'Iversen',
+]
 
 const platforms: Platform[] = ['Google', 'Trustpilot', 'G2', 'App Store', 'Capterra']
 const products = ['ReviewDot Core', 'Insights Suite', 'Reply Studio', 'Mobile App', 'API Platform']
-const locations = ['San Francisco, US', 'Berlin, DE', 'London, UK', 'Singapore, SG', 'Toronto, CA', 'Sydney, AU', 'Amsterdam, NL', 'Austin, US']
+const locations = [
+  'San Francisco, US',
+  'Berlin, DE',
+  'London, UK',
+  'Singapore, SG',
+  'Toronto, CA',
+  'Sydney, AU',
+  'Amsterdam, NL',
+  'Austin, US',
+]
 
 const positiveBodies = [
   'The AI reply suggestions are shockingly good. What used to take our team hours now happens in minutes, and the tone matching is spot on.',
@@ -76,12 +119,32 @@ const negativeBodies = [
 ]
 
 const titlesBySentiment: Record<Sentiment, string[]> = {
-  positive: ['Transformed our review workflow', 'Exceptional from day one', 'The AI replies alone are worth it', 'Finally, visibility across every location'],
+  positive: [
+    'Transformed our review workflow',
+    'Exceptional from day one',
+    'The AI replies alone are worth it',
+    'Finally, visibility across every location',
+  ],
   neutral: ['Good, with room to grow', 'Solid choice for mid-size teams', 'Does the job well enough'],
-  negative: ['Mobile app needs attention', 'Documentation gaps slowed us down', 'Import experience was rough'],
+  negative: [
+    'Mobile app needs attention',
+    'Documentation gaps slowed us down',
+    'Import experience was rough',
+  ],
 }
 
-const tagPool = ['onboarding', 'ai-replies', 'analytics', 'pricing', 'support', 'mobile', 'integrations', 'performance', 'api', 'reporting']
+const tagPool = [
+  'onboarding',
+  'ai-replies',
+  'analytics',
+  'pricing',
+  'support',
+  'mobile',
+  'integrations',
+  'performance',
+  'api',
+  'reporting',
+]
 
 function mulberry32(seed: number) {
   return function () {
@@ -101,14 +164,25 @@ function pick<T>(arr: T[]): T {
 function makeReview(i: number): Review {
   const roll = rand()
   const sentiment: Sentiment = roll < 0.58 ? 'positive' : roll < 0.82 ? 'neutral' : 'negative'
-  const rating = sentiment === 'positive' ? 4 + Math.round(rand()) : sentiment === 'neutral' ? 3 : 1 + Math.round(rand())
+  const rating =
+    sentiment === 'positive' ? 4 + Math.round(rand()) : sentiment === 'neutral' ? 3 : 1 + Math.round(rand())
   const first = pick(firstNames)
   const last = pick(lastNames)
   const body =
-    sentiment === 'positive' ? pick(positiveBodies) : sentiment === 'neutral' ? pick(neutralBodies) : pick(negativeBodies)
+    sentiment === 'positive'
+      ? pick(positiveBodies)
+      : sentiment === 'neutral'
+        ? pick(neutralBodies)
+        : pick(negativeBodies)
   const statusRoll = rand()
   const status: ReviewStatus =
-    statusRoll < 0.3 ? 'new' : statusRoll < 0.55 ? 'in-progress' : statusRoll < 0.9 ? 'responded' : 'escalated'
+    statusRoll < 0.3
+      ? 'new'
+      : statusRoll < 0.55
+        ? 'in-progress'
+        : statusRoll < 0.9
+          ? 'responded'
+          : 'escalated'
 
   return {
     id: `rev-${i}`,
@@ -147,10 +221,38 @@ export const reviews: Review[] = Array.from({ length: 42 }, (_, i) => makeReview
 )
 
 export const kpis: KpiSeed[] = [
-  { id: 'total', label: 'Total Reviews', value: 24862, delta: 12.4, spark: [32, 38, 35, 44, 48, 46, 58, 61, 57, 69, 74, 82] },
-  { id: 'rating', label: 'Average Rating', value: 4.6, decimals: 1, delta: 3.1, spark: [41, 42, 44, 43, 46, 47, 45, 48, 49, 51, 50, 53] },
-  { id: 'response', label: 'Response Rate', value: 94.2, suffix: '%', decimals: 1, delta: 8.7, spark: [55, 52, 58, 61, 64, 60, 70, 74, 78, 81, 86, 92] },
-  { id: 'sentiment', label: 'Sentiment Score', value: 87, suffix: '/100', delta: 5.2, spark: [48, 51, 47, 55, 58, 62, 60, 66, 71, 74, 79, 84] },
+  {
+    id: 'total',
+    label: 'Total Reviews',
+    value: 24862,
+    delta: 12.4,
+    spark: [32, 38, 35, 44, 48, 46, 58, 61, 57, 69, 74, 82],
+  },
+  {
+    id: 'rating',
+    label: 'Average Rating',
+    value: 4.6,
+    decimals: 1,
+    delta: 3.1,
+    spark: [41, 42, 44, 43, 46, 47, 45, 48, 49, 51, 50, 53],
+  },
+  {
+    id: 'response',
+    label: 'Response Rate',
+    value: 94.2,
+    suffix: '%',
+    decimals: 1,
+    delta: 8.7,
+    spark: [55, 52, 58, 61, 64, 60, 70, 74, 78, 81, 86, 92],
+  },
+  {
+    id: 'sentiment',
+    label: 'Sentiment Score',
+    value: 87,
+    suffix: '/100',
+    delta: 5.2,
+    spark: [48, 51, 47, 55, 58, 62, 60, 66, 71, 74, 79, 84],
+  },
 ]
 
 export const trendSeries = {

@@ -45,7 +45,9 @@ export function ActivityFeed() {
                 <div className="truncate text-sm text-mist-100">{e.text}</div>
                 <div className="truncate text-xs text-mist-500">{e.meta}</div>
               </div>
-              <span className="shrink-0 pt-0.5 text-[10px] whitespace-nowrap text-mist-500">{timeAgo(e.at)}</span>
+              <span className="shrink-0 pt-0.5 text-[10px] whitespace-nowrap text-mist-500">
+                {timeAgo(e.at)}
+              </span>
             </motion.div>
           )
         })}

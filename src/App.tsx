@@ -1,7 +1,9 @@
 import { lazy, Suspense } from 'react'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
+import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import { Dashboard } from '@/pages/Dashboard'
+import { NotFound } from '@/pages/NotFound'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 
 // secondary routes are code-split; the dashboard loads instantly
@@ -22,37 +24,39 @@ function RouteFallback() {
 
 export default function App() {
   return (
-    <HashRouter>
-      <Routes>
-        <Route element={<AppShell />}>
-          <Route index element={<Dashboard />} />
-          <Route
-            path="reviews"
-            element={
-              <Suspense fallback={<RouteFallback />}>
-                <Reviews />
-              </Suspense>
-            }
-          />
-          <Route
-            path="analytics"
-            element={
-              <Suspense fallback={<RouteFallback />}>
-                <Analytics />
-              </Suspense>
-            }
-          />
-          <Route
-            path="settings"
-            element={
-              <Suspense fallback={<RouteFallback />}>
-                <Settings />
-              </Suspense>
-            }
-          />
-          <Route path="*" element={<Dashboard />} />
-        </Route>
-      </Routes>
-    </HashRouter>
+    <ErrorBoundary>
+      <HashRouter>
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route index element={<Dashboard />} />
+            <Route
+              path="reviews"
+              element={
+                <Suspense fallback={<RouteFallback />}>
+                  <Reviews />
+                </Suspense>
+              }
+            />
+            <Route
+              path="analytics"
+              element={
+                <Suspense fallback={<RouteFallback />}>
+                  <Analytics />
+                </Suspense>
+              }
+            />
+            <Route
+              path="settings"
+              element={
+                <Suspense fallback={<RouteFallback />}>
+                  <Settings />
+                </Suspense>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Routes>
+      </HashRouter>
+    </ErrorBoundary>
   )
 }

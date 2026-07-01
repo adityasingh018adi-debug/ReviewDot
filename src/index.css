@@ -1,15 +1,15 @@
-@import "tailwindcss";
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
-@import "@fontsource/inter/700.css";
-@import "@fontsource/space-grotesk/500.css";
-@import "@fontsource/space-grotesk/600.css";
-@import "@fontsource/space-grotesk/700.css";
+@import 'tailwindcss';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/space-grotesk/500.css';
+@import '@fontsource/space-grotesk/600.css';
+@import '@fontsource/space-grotesk/700.css';
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', ui-sans-serif, system-ui, sans-serif;
 
   --color-ink-950: #06070c;
   --color-ink-900: #0a0c14;
@@ -36,6 +36,11 @@
   --color-amber-glow: #ffc555;
   --color-rose-glow: #fb6d88;
 
+  /* stays white in both themes (accent surfaces, orb icons) */
+  --color-pure: #ffffff;
+  /* theme-aware hairline border */
+  --color-edge: rgb(255 255 255 / 0.08);
+
   --shadow-glow-sm: 0 0 20px -6px rgb(97 114 243 / 0.45);
   --shadow-glow: 0 8px 40px -8px rgb(97 114 243 / 0.5);
   --shadow-panel: 0 24px 60px -20px rgb(0 0 0 / 0.65), 0 2px 8px -2px rgb(0 0 0 / 0.4);
@@ -46,9 +51,83 @@ html {
   scroll-behavior: smooth;
 }
 
+/*
+ * Light theme: overriding --color-white flips every white-alpha utility
+ * (bg-white/6, border-white/10, …) to a dark-alpha overlay, so the whole
+ * component tree adapts without per-component changes.
+ */
+[data-theme='light'] {
+  --color-white: #10163a;
+  --color-edge: rgb(16 22 58 / 0.1);
+
+  --color-ink-950: #edeff8;
+  --color-ink-900: #f4f5fb;
+  --color-ink-850: #ffffff;
+  --color-ink-800: #e7eaf5;
+  --color-ink-700: #dce0f0;
+
+  --color-mist-50: #0f1430;
+  --color-mist-100: #1a2144;
+  --color-mist-300: #3d4570;
+  --color-mist-400: #575f8a;
+  --color-mist-500: #6e769c;
+
+  --color-pulse-300: #4c53e8;
+  --color-pulse-400: #5261ef;
+  --color-cyan-glow: #0aa5b5;
+  --color-mint-400: #0f9e6e;
+  --color-amber-glow: #c47f10;
+  --color-rose-glow: #e0335c;
+  --color-aura-400: #9333ea;
+
+  --shadow-panel: 0 24px 60px -20px rgb(30 35 80 / 0.16), 0 2px 8px -2px rgb(30 35 80 / 0.06);
+  --shadow-float: 0 30px 80px -24px rgb(30 35 80 / 0.22), 0 0 0 1px rgb(16 22 58 / 0.05);
+  --shadow-glow-sm: 0 0 20px -6px rgb(97 114 243 / 0.3);
+  --shadow-glow: 0 8px 40px -8px rgb(97 114 243 / 0.35);
+}
+
+[data-theme='light'] .glass {
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.8), rgb(255 255 255 / 0.55));
+  border-color: rgb(16 22 58 / 0.08);
+}
+
+[data-theme='light'] .glass-strong {
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.94), rgb(246 247 252 / 0.96));
+  border-color: rgb(16 22 58 / 0.09);
+}
+
+[data-theme='light'] .bg-grid-lines {
+  background-image:
+    linear-gradient(rgb(16 22 58 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(16 22 58 / 0.035) 1px, transparent 1px);
+}
+
+[data-theme='light'] .skeleton {
+  background: linear-gradient(
+    100deg,
+    rgb(16 22 58 / 0.05) 30%,
+    rgb(16 22 58 / 0.12) 50%,
+    rgb(16 22 58 / 0.05) 70%
+  );
+  background-size: 200% 100%;
+}
+
+[data-theme='light'] .text-gradient {
+  background: linear-gradient(120deg, #1a2144 20%, #4c53e8 55%, #9333ea 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: rgb(16 22 58 / 0.15);
+}
+
 body {
   @apply bg-ink-950 text-mist-100 font-sans antialiased;
   overscroll-behavior-y: none;
+  transition:
+    background-color 0.4s ease,
+    color 0.4s ease;
 }
 
 ::selection {
@@ -100,38 +179,73 @@ body {
 }
 
 @keyframes aurora-drift {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  33% { transform: translate3d(6%, -8%, 0) scale(1.12); }
-  66% { transform: translate3d(-7%, 5%, 0) scale(0.94); }
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(6%, -8%, 0) scale(1.12);
+  }
+  66% {
+    transform: translate3d(-7%, 5%, 0) scale(0.94);
+  }
 }
 
 @keyframes float-slow {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-18px) rotate(4deg); }
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-18px) rotate(4deg);
+  }
 }
 
 @keyframes spin-slow {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes shimmer {
-  from { background-position: 200% 0; }
-  to { background-position: -200% 0; }
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
 }
 
 @keyframes pulse-ring {
-  0% { transform: scale(1); opacity: 0.6; }
-  100% { transform: scale(2.1); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
 }
 
 @keyframes orb-breathe {
-  0%, 100% { transform: scale(1); filter: brightness(1); }
-  50% { transform: scale(1.06); filter: brightness(1.25); }
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.06);
+    filter: brightness(1.25);
+  }
 }
 
 @keyframes grid-pan {
-  from { background-position: 0 0; }
-  to { background-position: 0 56px; }
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 56px;
+  }
 }
 
 .animate-aurora {
@@ -173,7 +287,10 @@ body {
 }
 
 @keyframes ripple-grow {
-  to { transform: scale(3.5); opacity: 0; }
+  to {
+    transform: scale(3.5);
+    opacity: 0;
+  }
 }
 
 .bg-grid-lines {
@@ -188,7 +305,9 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

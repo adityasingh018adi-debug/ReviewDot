@@ -8,7 +8,13 @@ interface ProgressRingProps {
   label?: string
 }
 
-export function ProgressRing({ value, size = 84, stroke = 7, color = 'var(--color-pulse-400)', label }: ProgressRingProps) {
+export function ProgressRing({
+  value,
+  size = 84,
+  stroke = 7,
+  color = 'var(--color-pulse-400)',
+  label,
+}: ProgressRingProps) {
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
 
