@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="ReviewDot — enterprise-grade AI review management platform" />
+    <title>ReviewDot — AI Review Intelligence</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      /* First-paint splash, removed once React mounts */
+      #splash {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: #06070c;
+        z-index: 9999;
+        transition: opacity 0.5s ease;
+      }
+      #splash .ring {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.08);
+        border-top-color: rgba(255, 255, 255, 0.75);
+        animation: splash-spin 0.9s linear infinite;
+      }
+      @keyframes splash-spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="splash"><div class="ring"></div></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
