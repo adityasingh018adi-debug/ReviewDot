@@ -64,6 +64,7 @@ export interface ReviewOverride {
   publishedReply?: string
   note?: string
   extraTags?: string[]
+  archived?: boolean
 }
 
 interface ReviewActionsState {
@@ -72,6 +73,8 @@ interface ReviewActionsState {
   setStatus: (reviewId: string, status: ReviewStatus) => void
   setNote: (reviewId: string, note: string) => void
   addTag: (reviewId: string, tag: string) => void
+  setArchived: (reviewIds: string[], archived: boolean) => void
+  markReplied: (reviewIds: string[]) => void
 }
 
 /** Optimistic, locally-persisted review actions — replies, statuses, notes, and tags survive reloads. */
@@ -106,6 +109,18 @@ export const useReviewActions = create<ReviewActionsState>()(
               [reviewId]: { ...s.overrides[reviewId], extraTags: [...existing, clean] },
             },
           }
+        }),
+      setArchived: (reviewIds, archived) =>
+        set((s) => {
+          const overrides = { ...s.overrides }
+          for (const id of reviewIds) overrides[id] = { ...overrides[id], archived }
+          return { overrides }
+        }),
+      markReplied: (reviewIds) =>
+        set((s) => {
+          const overrides = { ...s.overrides }
+          for (const id of reviewIds) overrides[id] = { ...overrides[id], status: 'replied' }
+          return { overrides }
         }),
     }),
     { name: 'reviewdot-review-actions', version: 1, migrate: () => ({ overrides: {} }) },

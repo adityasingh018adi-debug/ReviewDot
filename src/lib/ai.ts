@@ -115,13 +115,48 @@ export async function streamAssistantReply(history: ChatTurn[], handlers: Stream
   return full
 }
 
-/** Streams an AI-drafted reply to a specific review. */
+export const REPLY_TONES = [
+  { id: 'professional', label: 'Professional', hint: 'Polished and businesslike' },
+  { id: 'friendly', label: 'Friendly', hint: 'Warm and conversational' },
+  { id: 'apologetic', label: 'Apologetic', hint: 'Lead with a sincere apology' },
+  { id: 'concise', label: 'Concise', hint: 'Two sentences, straight to the point' },
+] as const
+
+export type ReplyTone = (typeof REPLY_TONES)[number]['id']
+
+const toneInstructions: Record<ReplyTone, string> = {
+  professional: 'Write in a polished, professional voice — courteous and composed.',
+  friendly: 'Write in a warm, friendly, conversational voice — like a neighborly owner.',
+  apologetic: 'Lead with a sincere, specific apology and take clear ownership before offering a remedy.',
+  concise: 'Be extremely concise: two sentences maximum, no filler.',
+}
+
+/** Simulation fallback: reshape the canned reply to match the requested tone. */
+function simulatedToneReply(
+  review: { author: string; aiReply: string; body: string },
+  tone: ReplyTone,
+): string {
+  const first = review.author.split(' ')[0]
+  switch (tone) {
+    case 'friendly':
+      return `Hey ${first}! ${review.aiReply.replace(/^[^—.!]*[.!]\s*/, '')} Thanks a million for taking the time to write this — it honestly keeps us going. See you soon! 😊`
+    case 'apologetic':
+      return `${first}, first and foremost: we're sincerely sorry. You deserved better, and there's no excuse. We've reviewed exactly what went wrong on our side and taken steps so it doesn't happen again. Please give us a chance to make this right — reach me directly at care@reviewdot.ai.`
+    case 'concise':
+      return `Thank you for the feedback, ${first} — we've taken it on board and acted on it. We'd love to welcome you back soon.`
+    default:
+      return review.aiReply
+  }
+}
+
+/** Streams an AI-drafted reply to a specific review in the requested tone. */
 export async function streamReviewReply(
   review: { author: string; platform: string; rating: number; body: string; aiReply: string },
   handlers: StreamHandlers,
+  tone: ReplyTone = 'professional',
 ): Promise<string> {
   if (!aiIsLive()) {
-    return simulateStream(review.aiReply, handlers)
+    return simulateStream(simulatedToneReply(review, tone), handlers)
   }
 
   const { model } = useAiConfig.getState()
@@ -135,8 +170,9 @@ export async function streamReviewReply(
     thinking: { type: 'adaptive' },
     system:
       `You write public review replies on behalf of "${name}", a ${profile.label.toLowerCase()}. ` +
-      "Match the reviewer's tone, address their specific points, keep it under 80 words, sign nothing. " +
-      'Be genuine — never corporate boilerplate. If the review is negative, apologize concretely and offer a direct contact (care@reviewdot.ai).',
+      `${toneInstructions[tone]} ` +
+      "Address the reviewer's specific points, keep it under 80 words, sign nothing. " +
+      'Be genuine — never corporate boilerplate. If the review is negative, offer a direct contact (care@reviewdot.ai).',
     messages: [
       {
         role: 'user',

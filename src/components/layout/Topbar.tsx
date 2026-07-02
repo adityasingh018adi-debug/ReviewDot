@@ -1,11 +1,87 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Bell, Plus, Command, Star, MessageSquareText, TrendingUp, Sun, Moon } from 'lucide-react'
+import {
+  Search,
+  Bell,
+  Plus,
+  Command,
+  Star,
+  MessageSquareText,
+  TrendingUp,
+  Sun,
+  Moon,
+  MapPin,
+  ChevronDown,
+  Check,
+} from 'lucide-react'
 import { useWorkspace, useToasts } from '@/store/workspace'
 import { useDataset } from '@/lib/data'
+import { useBusiness } from '@/lib/business'
 import { Button } from '@/components/ui/Button'
 import { cn, timeAgo } from '@/lib/utils'
+
+/** Multi-location switcher — filters reviews across the workspace. */
+function LocationSwitcher() {
+  const dataset = useDataset()
+  const activeLocation = useBusiness((s) => s.activeLocation)
+  const setActiveLocation = useBusiness((s) => s.setActiveLocation)
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const close = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
+  }, [])
+
+  const options = ['all', ...dataset.locations]
+
+  return (
+    <div className="relative hidden lg:block" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex h-10 items-center gap-1.5 rounded-xl border border-edge bg-white/4 px-3 text-xs font-medium text-mist-200 transition-colors hover:border-white/20"
+        aria-label="Switch location"
+      >
+        <MapPin size={13} className="text-pulse-300" />
+        {activeLocation === 'all' ? 'All locations' : activeLocation}
+        <ChevronDown size={13} className={cn('text-mist-500 transition-transform', open && 'rotate-180')} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15 }}
+            className="glass-strong absolute top-12 left-0 z-50 w-48 overflow-hidden rounded-xl p-1 shadow-float"
+          >
+            {options.map((loc) => (
+              <button
+                key={loc}
+                onClick={() => {
+                  setActiveLocation(loc)
+                  setOpen(false)
+                }}
+                className={cn(
+                  'flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition-colors',
+                  activeLocation === loc ? 'bg-pulse-500/15 text-mist-50' : 'text-mist-300 hover:bg-white/5',
+                )}
+              >
+                {loc === 'all' ? 'All locations' : loc}
+                {activeLocation === loc && <Check size={12} className="text-pulse-300" />}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 const notifications = [
   { id: 1, icon: Star, text: 'New 5★ review from Ava Chen', time: '2m ago', unread: true },
@@ -119,6 +195,8 @@ export function Topbar() {
           )}
         </AnimatePresence>
       </div>
+
+      <LocationSwitcher />
 
       <div className="ml-auto flex items-center gap-2">
         <Button

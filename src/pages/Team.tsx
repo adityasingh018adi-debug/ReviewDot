@@ -113,7 +113,7 @@ export function Team() {
         >
           <div className="mb-4 flex items-center gap-2">
             <History size={15} className="text-cyan-glow" />
-            <h3 className="font-display text-sm font-semibold">Activity log</h3>
+            <h3 className="font-display text-sm font-semibold">Audit log</h3>
           </div>
           <div className="space-y-3">
             {activity.slice(0, 6).map((e) => (

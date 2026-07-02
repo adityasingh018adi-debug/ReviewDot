@@ -64,9 +64,13 @@ export interface HealthFactor {
 export interface Dataset {
   type: BusinessType
   reviews: Review[]
+  /** the business's locations — reviews are attributed to these */
+  locations: string[]
   kpis: KpiSeed[]
   trendSeries: { labels: string[]; reviews: number[]; responses: number[] }
   ratingTrend: number[]
+  /** review counts by star rating, index 0 = 1★ … index 4 = 5★ */
+  ratingDistribution: number[]
   platformVolumes: Array<{ name: string; value: number }>
   sentimentSplit: Array<{ name: string; value: number }>
   topComplaints: Array<{ name: string; value: number }>
@@ -138,6 +142,10 @@ function buildDataset(type: BusinessType): Dataset {
   const rand = mulberry32(type.length * 7919 + 20260701)
   const pick = <T>(arr: T[]): T => arr[Math.floor(rand() * arr.length)]
 
+  // each business runs three locations; reviews are attributed among them
+  const offset = Math.floor(rand() * locations.length)
+  const businessLocations = [0, 1, 2].map((i) => locations[(offset + i * 3) % locations.length])
+
   const reviews: Review[] = Array.from({ length: 42 }, (_, i) => {
     const roll = rand()
     const sentiment: Sentiment = roll < 0.58 ? 'positive' : roll < 0.82 ? 'neutral' : 'negative'
@@ -162,7 +170,7 @@ function buildDataset(type: BusinessType): Dataset {
       title: pick(profile.titles[sentiment]),
       body: pick(profile.bodies[sentiment]),
       service,
-      location: pick(locations),
+      location: pick(businessLocations),
       date: new Date(Date.now() - Math.floor(rand() * 21 * 24 * 3600 * 1000)),
       helpful: Math.floor(rand() * 48),
       aiSummary:
@@ -185,6 +193,8 @@ function buildDataset(type: BusinessType): Dataset {
 
   const fourPlus = reviews.filter((r) => r.rating >= 4).length
   const csat = Math.round((fourPlus / reviews.length) * 100)
+
+  const ratingDistribution = [1, 2, 3, 4, 5].map((star) => reviews.filter((r) => r.rating === star).length)
 
   const complaintCounts = new Map<string, number>()
   for (const r of reviews) {
@@ -271,6 +281,7 @@ function buildDataset(type: BusinessType): Dataset {
   return {
     type,
     reviews,
+    locations: businessLocations,
     kpis,
     trendSeries: {
       labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -278,6 +289,7 @@ function buildDataset(type: BusinessType): Dataset {
       responses: [58, 74, 79, 98, 110, 112, 136, 154, 152, 176, 192, 211],
     },
     ratingTrend: [4.31, 4.35, 4.33, 4.4, 4.42, 4.45, 4.44, 4.5, 4.52, 4.55, 4.58, 4.6],
+    ratingDistribution,
     platformVolumes: [
       { name: 'Google', value: 842 },
       { name: 'Facebook', value: 431 },
@@ -297,7 +309,8 @@ function buildDataset(type: BusinessType): Dataset {
     suggestions: [
       'Summarize this week’s reviews',
       'What are customers complaining about most?',
-      'How is my business health score calculated?',
+      'Suggest improvements for my business',
+      'How do I compare to competitors nearby?',
       'Draft replies for all open negative reviews',
     ],
   }
@@ -357,6 +370,15 @@ export function assistantAnswer(prompt: string, dataset: Dataset): string {
   }
   if (p.includes('health')) {
     return `Your business health score is ${dataset.health.score} (grade ${dataset.health.grade}). It blends four signals: average rating (${dataset.health.factors[0].score}), response coverage (${dataset.health.factors[1].score}), sentiment momentum (${dataset.health.factors[2].score}), and review velocity (${dataset.health.factors[3].score}). Your weakest lever is review velocity — asking happy customers for reviews at the point of service is the fastest way to raise it.`
+  }
+  if (p.includes('improve') || p.includes('suggest')) {
+    return `Three improvements with the highest payoff for your ${profile.label.toLowerCase()} right now: 1) ${dataset.actions[0].action} — ${dataset.actions[0].title.toLowerCase()}, your biggest source of negative reviews. 2) ${dataset.actions[1].action} — ${dataset.actions[1].title.toLowerCase()}. 3) Ask for reviews at the point of service — your review velocity (${dataset.health.factors[3].score}/100) is your weakest health factor, and happy customers rarely review unprompted. Start with #1; it typically moves the rating within a month.`
+  }
+  if (p.includes('compet') || p.includes('compare')) {
+    return `Compared to similar ${profile.label.toLowerCase()}s in your area: your 4.6★ average beats the local median of 4.3★, and your 94% response rate is far above the 41% typical for your industry — most competitors simply don't reply. Where rivals edge ahead: review volume (top performers collect ~2× more reviews monthly) and ${top}, which their customers mention less often. Net position: top 20% locally. Close the volume gap with point-of-service review requests and you're comfortably top 10%.`
+  }
+  if (p.includes('sentiment') || p.includes('feel')) {
+    return `Customer sentiment: ${dataset.sentimentSplit[0].value}% positive, ${dataset.sentimentSplit[1].value}% neutral, ${dataset.sentimentSplit[2].value}% negative — and trending up 5 points this month. Positives cluster around your staff and ${profile.services[0].toLowerCase()}; negatives concentrate on ${top} and ${second}. The neutral band is your conversion opportunity: those customers liked you but hit one friction point each.`
   }
   if (p.includes('draft') || p.includes('repl')) {
     return `Done — I drafted replies for all ${dataset.reviews.filter((r) => r.status === 'open' && r.sentiment === 'negative').length} open negative reviews, each addressing the specific complaint and offering a direct contact. They're staged on the Reviews page awaiting your approval. Two mention refunds, so I flagged those for your decision first.`

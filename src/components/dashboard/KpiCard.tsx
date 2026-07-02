@@ -19,8 +19,10 @@ export function KpiCard({ kpi, index, live }: { kpi: KpiSeed; index: number; liv
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -4, rotateX: 1.5, rotateY: -1.5, transition: { duration: 0.2 } }}
+      style={{ transformPerspective: 900 }}
       transition={{ delay: 0.05 + index * 0.05, duration: 0.35, ease: 'easeOut' }}
-      className="glass group relative overflow-hidden rounded-2xl p-5 shadow-panel transition-colors duration-300 hover:border-white/20"
+      className="glass group relative overflow-hidden rounded-2xl p-5 shadow-panel transition-colors duration-300 hover:border-white/20 hover:shadow-glow-sm"
     >
       <div
         className="absolute -top-10 -right-10 h-28 w-28 rounded-full opacity-20 blur-2xl"

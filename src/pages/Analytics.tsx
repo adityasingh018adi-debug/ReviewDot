@@ -227,6 +227,26 @@ export function Analytics() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.14, duration: 0.3 }}
         >
+          <PanelHeader icon={Star} title="Rating distribution" tint="text-amber-glow" />
+          <BarChart
+            data={[5, 4, 3, 2, 1].map((star) => ({
+              name: `${star}★`,
+              value: dataset.ratingDistribution[star - 1],
+            }))}
+            color="var(--color-amber-glow)"
+          />
+          <p className="mt-3 text-[11px] text-mist-500">
+            {dataset.ratingDistribution[4] + dataset.ratingDistribution[3]} of {dataset.reviews.length} recent
+            reviews are 4★ or above.
+          </p>
+        </GlassPanel>
+
+        <GlassPanel
+          className="p-5"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.16, duration: 0.3 }}
+        >
           <PanelHeader icon={BarChartHorizontal} title="Top complaint topics" tint="text-rose-glow" />
           <BarChart data={dataset.topComplaints} color="var(--color-rose-glow)" />
         </GlassPanel>

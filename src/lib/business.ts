@@ -381,8 +381,11 @@ export function businessProfile(type: BusinessType): BusinessProfile {
 interface BusinessState {
   type: BusinessType
   name: string
+  /** 'all' or a specific location name — filters reviews across the app */
+  activeLocation: string
   setType: (type: BusinessType) => void
   setName: (name: string) => void
+  setActiveLocation: (location: string) => void
 }
 
 /** The active business profile — the AI and all analytics adapt to it. */
@@ -391,8 +394,10 @@ export const useBusiness = create<BusinessState>()(
     (set) => ({
       type: 'restaurant',
       name: 'Solstice & Co.',
-      setType: (type) => set({ type }),
+      activeLocation: 'all',
+      setType: (type) => set({ type, activeLocation: 'all' }),
       setName: (name) => set({ name }),
+      setActiveLocation: (activeLocation) => set({ activeLocation }),
     }),
     { name: 'reviewdot-business' },
   ),

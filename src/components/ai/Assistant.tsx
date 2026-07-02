@@ -133,7 +133,9 @@ export function AssistantPanel() {
               <Sparkles size={18} className="text-pure" />
             </div>
             <div className="relative flex-1">
-              <div className="font-display text-sm font-bold text-mist-50">Aria</div>
+              <div className="font-display text-sm font-bold text-mist-50">
+                Aria <span className="font-normal text-mist-400">· AI Copilot</span>
+              </div>
               <div className="flex items-center gap-1.5 text-[11px] text-mist-400">
                 <span className={cn('h-1.5 w-1.5 rounded-full', live ? 'bg-mint-400' : 'bg-amber-glow')} />
                 {live ? 'Live · powered by Claude' : 'Simulated · add an API key in Settings'}

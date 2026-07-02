@@ -1,6 +1,22 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { User, Bot, Plug, Bell, Check, RotateCcw, Sparkles, Eye, EyeOff, Loader2, Store } from 'lucide-react'
+import {
+  User,
+  Bot,
+  Plug,
+  Bell,
+  Check,
+  RotateCcw,
+  Sparkles,
+  Eye,
+  EyeOff,
+  Loader2,
+  Store,
+  ShieldCheck,
+  Smartphone,
+  Monitor,
+} from 'lucide-react'
 import { useWorkspace, useToasts, DEFAULT_WIDGET_ORDER } from '@/store/workspace'
 import { useAiConfig, testConnection, AI_MODELS, type AiModelId } from '@/lib/ai'
 import { useBusiness, BUSINESS_TYPES } from '@/lib/business'
@@ -229,6 +245,7 @@ export function Settings() {
     negativeAlert: true,
     weeklyReport: true,
   })
+  const [twoFactor, setTwoFactor] = useState(false)
   const [connected, setConnected] = useState<Record<string, boolean>>({
     'Google Business Profile': true,
     Facebook: true,
@@ -378,7 +395,75 @@ export function Settings() {
         className="p-6"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.21, duration: 0.3 }}
+        transition={{ delay: 0.2, duration: 0.3 }}
+      >
+        <PanelHeader
+          icon={ShieldCheck}
+          title="Security"
+          tint="text-rose-glow"
+          right={twoFactor ? <Badge tone="positive">2FA on</Badge> : <Badge tone="warning">2FA off</Badge>}
+        />
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm font-medium text-mist-100">Two-factor authentication</div>
+              <div className="text-xs text-mist-400">
+                Require a one-time code from your authenticator app at sign-in
+              </div>
+            </div>
+            <Toggle
+              on={twoFactor}
+              onChange={(v) => {
+                setTwoFactor(v)
+                pushToast({
+                  tone: v ? 'success' : 'info',
+                  title: v ? 'Two-factor enabled' : 'Two-factor disabled',
+                  body: v ? 'Scan the QR code we emailed you to finish setup.' : undefined,
+                })
+              }}
+              label="Two-factor authentication"
+            />
+          </div>
+
+          <div>
+            <div className="mb-2 text-xs font-medium text-mist-300">Active sessions</div>
+            <div className="divide-y divide-white/6 rounded-xl border border-edge bg-white/3">
+              {[
+                { icon: Monitor, label: 'Chrome · Windows', meta: 'This device · active now' },
+                { icon: Smartphone, label: 'ReviewDot iOS', meta: 'Last active 2h ago' },
+              ].map(({ icon: Icon, label, meta }) => (
+                <div key={label} className="flex items-center gap-3 px-3 py-2.5">
+                  <Icon size={15} className="text-mist-400" />
+                  <div className="flex-1">
+                    <div className="text-xs font-medium text-mist-100">{label}</div>
+                    <div className="text-[11px] text-mist-500">{meta}</div>
+                  </div>
+                  <button
+                    onClick={() => pushToast({ tone: 'info', title: 'Session revoked' })}
+                    className="text-[11px] text-rose-glow transition-opacity hover:opacity-80"
+                  >
+                    Revoke
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="text-xs text-mist-400">
+            Every sign-in, reply, and settings change is recorded in the{' '}
+            <Link to="/team" className="text-pulse-300 underline-offset-2 hover:underline">
+              audit log
+            </Link>
+            .
+          </div>
+        </div>
+      </GlassPanel>
+
+      <GlassPanel
+        className="p-6"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.23, duration: 0.3 }}
       >
         <div className="flex items-center justify-between gap-4">
           <div>

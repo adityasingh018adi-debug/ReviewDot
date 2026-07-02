@@ -53,8 +53,59 @@ test('reviews filter, expand, draft AI reply, and take notes', async ({ page }) 
   await card.locator('button').first().click()
   await expect(page.getByText('AI summary')).toBeVisible()
   await expect(page.getByText('Internal notes')).toBeVisible()
-  await page.getByRole('button', { name: /Generate AI reply/ }).click()
+  await page.getByRole('button', { name: /Generate \w+ reply/ }).click()
   await expect(page.getByRole('button', { name: /Approve & publish/ })).toBeVisible({ timeout: 15_000 })
+})
+
+test('advanced filters and bulk actions work', async ({ page }) => {
+  await enterWorkspace(page)
+  await page.goto('/#/reviews')
+  await expect(page.getByRole('heading', { name: 'Reviews' })).toBeVisible()
+
+  // advanced filters: unanswered only
+  await page.getByRole('button', { name: /^Filters/ }).click()
+  await page.getByText('Unanswered only').click()
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(600)
+  await expect(page.locator('article').first()).toContainText('Open')
+
+  // bulk selection surfaces the action bar
+  await page.locator('article input[type="checkbox"]').first().check()
+  await page.locator('article input[type="checkbox"]').nth(1).check()
+  await expect(page.getByText('2 selected')).toBeVisible()
+  await page.getByRole('button', { name: /AI reply all/ }).click()
+  await expect(page.getByText(/AI replies published for 2 reviews/)).toBeVisible()
+})
+
+test('AI reply supports multiple tones', async ({ page }) => {
+  await enterWorkspace(page)
+  await page.goto('/#/reviews')
+  await page.waitForTimeout(600)
+  await page.locator('article button[aria-expanded]').first().click()
+  await expect(page.getByRole('button', { name: 'Friendly' })).toBeVisible()
+  await page.getByRole('button', { name: 'Apologetic' }).click()
+  await page.getByRole('button', { name: /Generate apologetic reply/ }).click()
+  await expect(page.getByRole('button', { name: /Approve & publish/ })).toBeVisible({ timeout: 15_000 })
+})
+
+test('analytics shows rating distribution and security has 2FA', async ({ page }) => {
+  await enterWorkspace(page)
+  await page.goto('/#/analytics')
+  await expect(page.getByText('Rating distribution')).toBeVisible()
+  await page.goto('/#/settings')
+  await expect(page.getByText('Two-factor authentication')).toBeVisible()
+})
+
+test('location switcher filters reviews', async ({ page }) => {
+  await enterWorkspace(page)
+  await page.getByRole('button', { name: 'Switch location' }).click()
+  const dropdown = page.locator('div.w-48')
+  await expect(dropdown.getByRole('button', { name: 'All locations' })).toBeVisible()
+  const firstLocation = dropdown.getByRole('button').nth(1)
+  const name = (await firstLocation.textContent())?.trim() ?? ''
+  await firstLocation.click()
+  await page.goto('/#/reviews')
+  await expect(page.getByText(`showing ${name}`)).toBeVisible()
 })
 
 test('team page shows members, permissions, and activity', async ({ page }) => {
@@ -62,7 +113,7 @@ test('team page shows members, permissions, and activity', async ({ page }) => {
   await page.goto('/#/team')
   await expect(page.getByRole('heading', { name: 'Team' })).toBeVisible()
   await expect(page.getByText('Roles & permissions')).toBeVisible()
-  await expect(page.getByText('Activity log')).toBeVisible()
+  await expect(page.getByText('Audit log')).toBeVisible()
 })
 
 test('analytics offers PDF, Excel, and CSV reports', async ({ page }) => {

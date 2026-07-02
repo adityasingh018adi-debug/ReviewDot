@@ -19,7 +19,8 @@ function downloadCsv(filename: string, rows: Array<Array<string | number>>) {
   download(filename, new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }))
 }
 
-function reviewRows(dataset: Dataset): Array<Array<string | number>> {
+function reviewRows(dataset: Dataset, only?: Set<string>): Array<Array<string | number>> {
+  const reviews = only ? dataset.reviews.filter((r) => only.has(r.id)) : dataset.reviews
   return [
     [
       'id',
@@ -35,7 +36,7 @@ function reviewRows(dataset: Dataset): Array<Array<string | number>> {
       'date',
       'tags',
     ],
-    ...dataset.reviews.map((r) => [
+    ...reviews.map((r) => [
       r.id,
       r.author,
       r.rating,
@@ -52,9 +53,9 @@ function reviewRows(dataset: Dataset): Array<Array<string | number>> {
   ]
 }
 
-/** Downloads all reviews as a CSV file. */
-export function exportReviewsCsv(dataset: Dataset) {
-  downloadCsv('reviewdot-reviews.csv', reviewRows(dataset))
+/** Downloads reviews as a CSV file — all of them, or only the given selection. */
+export function exportReviewsCsv(dataset: Dataset, only?: Set<string>) {
+  downloadCsv('reviewdot-reviews.csv', reviewRows(dataset, only))
 }
 
 /** Downloads an analytics summary (KPIs + platforms + complaints) as CSV. */
