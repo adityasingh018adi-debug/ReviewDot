@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="ReviewDot — Monitor Reviews. Understand Customers. Grow Your Business with AI. The AI business reputation platform for clinics, restaurants, hotels, salons, gyms, and retail stores."
+    />
+    <title>ReviewDot — AI Business Reputation Platform</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <style>
+      /* First-paint splash, removed once React mounts */
+      #splash {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: #06070c;
+        z-index: 9999;
+        transition: opacity 0.5s ease;
+      }
+      #splash .ring {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.08);
+        border-top-color: rgba(255, 255, 255, 0.75);
+        animation: splash-spin 0.9s linear infinite;
+      }
+      @keyframes splash-spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/index-BfRjBeM3.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/vendor-DdaJUYlK.js">
+    <link rel="modulepreload" crossorigin href="./assets/motion-DRQI6aMb.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-ByeJKcha.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="splash"><div class="ring"></div></div>
+  </body>
+</html>

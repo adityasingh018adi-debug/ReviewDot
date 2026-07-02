@@ -1,0 +1,1 @@
+import{j as e,m as n}from"./motion-DRQI6aMb.js";import{e as t}from"./index-BfRjBeM3.js";function l({className:o,hover:s=!1,children:r,...a}){return e.jsx(n.div,{className:t("glass rounded-2xl shadow-panel",s&&"transition-[border-color,box-shadow] duration-300 hover:border-white/20 hover:shadow-glow-sm",o),...a,children:r})}export{l as G};
