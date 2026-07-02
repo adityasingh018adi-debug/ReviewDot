@@ -9,6 +9,7 @@ import { CardSkeleton } from '@/components/ui/Skeleton'
 // secondary routes are code-split; the dashboard loads instantly
 const Reviews = lazy(() => import('@/pages/Reviews').then((m) => ({ default: m.Reviews })))
 const Analytics = lazy(() => import('@/pages/Analytics').then((m) => ({ default: m.Analytics })))
+const Team = lazy(() => import('@/pages/Team').then((m) => ({ default: m.Team })))
 const Settings = lazy(() => import('@/pages/Settings').then((m) => ({ default: m.Settings })))
 
 function RouteFallback() {
@@ -42,6 +43,14 @@ export default function App() {
               element={
                 <Suspense fallback={<RouteFallback />}>
                   <Analytics />
+                </Suspense>
+              }
+            />
+            <Route
+              path="team"
+              element={
+                <Suspense fallback={<RouteFallback />}>
+                  <Team />
                 </Suspense>
               }
             />

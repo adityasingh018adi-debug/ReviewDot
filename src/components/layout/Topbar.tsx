@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Bell, Plus, Command, Star, MessageSquareText, TrendingUp, Sun, Moon } from 'lucide-react'
 import { useWorkspace, useToasts } from '@/store/workspace'
-import { reviews } from '@/lib/data'
+import { useDataset } from '@/lib/data'
 import { Button } from '@/components/ui/Button'
 import { cn, timeAgo } from '@/lib/utils'
 
@@ -26,6 +26,7 @@ export function Topbar() {
   const toggleTheme = useWorkspace((s) => s.toggleTheme)
   const pushToast = useToasts((s) => s.push)
   const navigate = useNavigate()
+  const dataset = useDataset()
   const [query, setQuery] = useState('')
   const [searchFocus, setSearchFocus] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
@@ -40,7 +41,7 @@ export function Topbar() {
   }, [])
 
   const results = query.trim()
-    ? reviews
+    ? dataset.reviews
         .filter(
           (r) =>
             r.author.toLowerCase().includes(query.toLowerCase()) ||

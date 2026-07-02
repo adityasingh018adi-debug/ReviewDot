@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Star, Sparkles, Reply, AlertTriangle, Users } from 'lucide-react'
-import { seedActivity, randomActivity, type ActivityEvent } from '@/lib/data'
+import { seedActivity, randomActivity, useDataset, type ActivityEvent } from '@/lib/data'
 import { useInterval } from '@/lib/hooks'
 import { timeAgo } from '@/lib/utils'
 
@@ -13,14 +13,15 @@ const kindMeta = {
   team: { Icon: Users, cls: 'bg-mint-400/12 text-mint-400' },
 }
 
-/** Realtime activity stream — new events flow in every few seconds. */
+/** Realtime activity stream — new events flow in periodically. */
 export function ActivityFeed() {
-  const [events, setEvents] = useState<ActivityEvent[]>(seedActivity)
+  const dataset = useDataset()
+  const [events, setEvents] = useState<ActivityEvent[]>(() => seedActivity(dataset))
   const [, setTick] = useState(0)
 
   useInterval(() => {
-    setEvents((prev) => [randomActivity(), ...prev].slice(0, 12))
-  }, 7000)
+    setEvents((prev) => [randomActivity(dataset), ...prev].slice(0, 12))
+  }, 12000)
   useInterval(() => setTick((t) => t + 1), 30000) // refresh relative timestamps
 
   return (
@@ -32,10 +33,10 @@ export function ActivityFeed() {
             <motion.div
               key={e.id}
               layout
-              initial={{ opacity: 0, y: -18, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
               className="flex items-start gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-white/4"
             >
               <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${cls}`}>

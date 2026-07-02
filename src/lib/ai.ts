@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { assistantAnswer, kpis, sentimentSplit, platformVolumes, reviews } from './data'
+import { assistantAnswer, getDataset } from './data'
+import { businessProfile, useBusiness } from './business'
 
 export const AI_MODELS = [
   { id: 'claude-opus-4-8', label: 'Claude Opus 4.8', hint: 'Most capable — best quality replies' },
@@ -49,21 +50,24 @@ async function client() {
   })
 }
 
-/** Grounding context so the model answers about this workspace's (demo) data. */
+/** Grounding context: the model understands the business type and answers with relevant insight. */
 function workspaceContext() {
-  const negative = reviews.filter((r) => r.sentiment === 'negative').length
+  const { type, name } = useBusiness.getState()
+  const dataset = getDataset(type)
+  const profile = businessProfile(type)
+  const negative = dataset.reviews.filter((r) => r.sentiment === 'negative').length
   return [
-    'You are Aria, the AI assistant inside ReviewDot, an enterprise review-management platform.',
-    'Be concise, warm, and concrete. Answer in plain prose (no markdown headers). Keep responses under 150 words unless asked for detail.',
+    `You are Aria, the AI assistant inside ReviewDot, an AI business reputation platform. You advise the owner of "${name}", a ${profile.label.toLowerCase()}.`,
+    `Give ${profile.label.toLowerCase()}-specific, operational advice — think like a consultant for that industry, not a generic dashboard.`,
+    'Be concise, warm, and concrete. Plain prose, no markdown headers. Keep responses under 150 words unless asked for detail.',
     '',
-    'Current workspace snapshot:',
-    `- Total reviews: ${kpis[0].value.toLocaleString()} across 5 platforms (Google, Trustpilot, G2, App Store, Capterra)`,
-    `- Average rating ${kpis[1].value}★ · response rate ${kpis[2].value}% · sentiment score ${kpis[3].value}/100`,
-    `- Sentiment split: ${sentimentSplit.map((s) => `${s.name} ${s.value}%`).join(', ')}`,
-    `- Platform volumes: ${platformVolumes.map((p) => `${p.name} ${p.value.toLocaleString()}`).join(', ')}`,
-    `- ${negative} recent reviews are negative; top complaint themes: duplicate mobile notifications, API rate-limit documentation, CSV import mapping`,
-    '- Known risk: App Store sentiment fell 0.4★ over 3 weeks after the v3.2 release',
-    '- Known opportunity: AI-assisted replies drive a +23% response uplift; APAC volume growing 14.3% MoM',
+    'Current business snapshot:',
+    `- Business type: ${profile.label} · services: ${profile.services.join(', ')}`,
+    `- ${dataset.kpis[0].value.toLocaleString()} reviews across Google, Facebook, TripAdvisor, Trustpilot · average rating ${dataset.kpis[1].value}★`,
+    `- Response rate ${dataset.kpis[2].value}% · customer satisfaction ${dataset.csat}% · health score ${dataset.health.score} (${dataset.health.grade})`,
+    `- Sentiment split: ${dataset.sentimentSplit.map((s) => `${s.name} ${s.value}%`).join(', ')} · ${negative} recent negative reviews`,
+    `- Top complaint topics: ${dataset.topComplaints.map((c) => `${c.name} (${c.value})`).join(', ')}`,
+    `- Active AI suggestions: ${dataset.actions.map((a) => a.title).join('; ')}`,
   ].join('\n')
 }
 
@@ -85,7 +89,7 @@ export async function streamAssistantReply(history: ChatTurn[], handlers: Stream
   const last = history[history.length - 1]?.content ?? ''
 
   if (!aiIsLive()) {
-    return simulateStream(assistantAnswer(last), handlers)
+    return simulateStream(assistantAnswer(last, getDataset(useBusiness.getState().type)), handlers)
   }
 
   const { model } = useAiConfig.getState()
@@ -121,6 +125,8 @@ export async function streamReviewReply(
   }
 
   const { model } = useAiConfig.getState()
+  const { type, name } = useBusiness.getState()
+  const profile = businessProfile(type)
   const firstName = review.author.split(' ')[0]
   let full = ''
   const stream = (await client()).messages.stream({
@@ -128,9 +134,9 @@ export async function streamReviewReply(
     max_tokens: 512,
     thinking: { type: 'adaptive' },
     system:
-      'You write public replies to customer reviews on behalf of ReviewDot, a review-management SaaS. ' +
+      `You write public review replies on behalf of "${name}", a ${profile.label.toLowerCase()}. ` +
       "Match the reviewer's tone, address their specific points, keep it under 80 words, sign nothing. " +
-      'Be genuine — never corporate boilerplate. If the review is negative, apologize concretely and offer a direct contact (success@reviewdot.ai).',
+      'Be genuine — never corporate boilerplate. If the review is negative, apologize concretely and offer a direct contact (care@reviewdot.ai).',
     messages: [
       {
         role: 'user',

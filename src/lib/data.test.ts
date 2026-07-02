@@ -1,43 +1,61 @@
 import { describe, it, expect } from 'vitest'
-import { reviews, kpis, heatmapData, sentimentSplit, assistantAnswer } from './data'
+import { getDataset, assistantAnswer } from './data'
+import { BUSINESS_TYPES } from './business'
 
-describe('mock data invariants', () => {
-  it('reviews are well-formed and newest-first', () => {
-    expect(reviews.length).toBeGreaterThan(20)
-    for (const r of reviews) {
+describe('business datasets', () => {
+  it.each(BUSINESS_TYPES.map((b) => [b.id] as const))('%s dataset is well-formed', (type) => {
+    const d = getDataset(type)
+
+    expect(d.reviews.length).toBeGreaterThan(20)
+    for (const r of d.reviews) {
       expect(r.rating).toBeGreaterThanOrEqual(1)
       expect(r.rating).toBeLessThanOrEqual(5)
-      expect(r.aiReply.length).toBeGreaterThan(20)
       expect(['positive', 'neutral', 'negative']).toContain(r.sentiment)
+      expect(['open', 'replied', 'closed']).toContain(r.status)
+      expect(r.aiReply.length).toBeGreaterThan(20)
     }
-    for (let i = 1; i < reviews.length; i++) {
-      expect(reviews[i - 1].date.getTime()).toBeGreaterThanOrEqual(reviews[i].date.getTime())
+    // newest first
+    for (let i = 1; i < d.reviews.length; i++) {
+      expect(d.reviews[i - 1].date.getTime()).toBeGreaterThanOrEqual(d.reviews[i].date.getTime())
     }
+    // unique ids
+    expect(new Set(d.reviews.map((r) => r.id)).size).toBe(d.reviews.length)
+
+    expect(d.kpis).toHaveLength(4)
+    expect(d.sentimentSplit.reduce((a, s) => a + s.value, 0)).toBe(100)
+    expect(d.csat).toBeGreaterThan(0)
+    expect(d.csat).toBeLessThanOrEqual(100)
+    expect(d.topComplaints.length).toBeGreaterThan(0)
+    expect(d.health.score).toBeGreaterThan(0)
+    expect(d.actions).toHaveLength(3)
   })
 
-  it('review ids are unique', () => {
-    expect(new Set(reviews.map((r) => r.id)).size).toBe(reviews.length)
+  it('datasets are memoized and business-specific', () => {
+    expect(getDataset('clinic')).toBe(getDataset('clinic'))
+    const clinicBodies = getDataset('clinic').reviews.map((r) => r.body)
+    const gymBodies = new Set(getDataset('gym').reviews.map((r) => r.body))
+    expect(clinicBodies.some((b) => gymBodies.has(b))).toBe(false)
   })
 
-  it('kpis carry sparkline series', () => {
-    expect(kpis).toHaveLength(4)
-    for (const k of kpis) expect(k.spark.length).toBeGreaterThanOrEqual(8)
-  })
-
-  it('heatmap covers a full week of hours', () => {
-    expect(heatmapData).toHaveLength(7)
-    for (const day of heatmapData) expect(day).toHaveLength(24)
-  })
-
-  it('sentiment split sums to 100', () => {
-    expect(sentimentSplit.reduce((a, s) => a + s.value, 0)).toBe(100)
+  it('review services come from the business profile', () => {
+    for (const b of BUSINESS_TYPES) {
+      const d = getDataset(b.id)
+      for (const r of d.reviews) expect(b.services).toContain(r.service)
+    }
   })
 })
 
 describe('assistantAnswer', () => {
-  it('routes topic keywords to relevant answers', () => {
-    expect(assistantAnswer('summarize negative reviews')).toContain('negative')
-    expect(assistantAnswer('why did the app store drop')).toContain('App Store')
-    expect(assistantAnswer('anything else')).toContain('94.2%')
+  const d = getDataset('restaurant')
+
+  it('answers grounded in the active dataset', () => {
+    expect(assistantAnswer('summarize this week', d)).toContain('restaurant')
+    expect(assistantAnswer('what are the complaints?', d)).toContain(d.topComplaints[0].name)
+    expect(assistantAnswer('explain my health score', d)).toContain(String(d.health.score))
+  })
+
+  it('adapts to a different business type', () => {
+    const clinic = getDataset('clinic')
+    expect(assistantAnswer('summarize this week', clinic)).toContain('clinic')
   })
 })

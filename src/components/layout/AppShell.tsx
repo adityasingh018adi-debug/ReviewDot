@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useWorkspace } from '@/store/workspace'
-import { useHotkey, useMediaQuery } from '@/lib/hooks'
+import { useHotkey } from '@/lib/hooks'
 import { AuroraBackground } from './AuroraBackground'
 import { Sidebar, MobileNav } from './Sidebar'
 import { Topbar } from './Topbar'
@@ -10,41 +10,6 @@ import { CommandPalette } from './CommandPalette'
 import { Toasts } from './Toasts'
 import { Onboarding } from './Onboarding'
 import { AssistantOrb, AssistantPanel } from '@/components/ai/Assistant'
-
-/** Soft glow that trails the pointer. Compositor-only; disabled on touch. */
-function CursorGlow() {
-  const ref = useRef<HTMLDivElement>(null)
-  const fine = useMediaQuery('(pointer: fine)')
-
-  useEffect(() => {
-    if (!fine) return
-    let raf = 0
-    const onMove = (e: PointerEvent) => {
-      cancelAnimationFrame(raf)
-      raf = requestAnimationFrame(() => {
-        ref.current?.style.setProperty(
-          'transform',
-          `translate3d(${e.clientX - 200}px, ${e.clientY - 200}px, 0)`,
-        )
-      })
-    }
-    window.addEventListener('pointermove', onMove, { passive: true })
-    return () => {
-      window.removeEventListener('pointermove', onMove)
-      cancelAnimationFrame(raf)
-    }
-  }, [fine])
-
-  if (!fine) return null
-  return (
-    <div
-      ref={ref}
-      aria-hidden
-      className="pointer-events-none fixed top-0 left-0 z-0 h-[400px] w-[400px] rounded-full opacity-70 will-change-transform"
-      style={{ background: 'radial-gradient(circle, rgb(97 114 243 / 0.07), transparent 60%)' }}
-    />
-  )
-}
 
 export function AppShell() {
   const collapsed = useWorkspace((s) => s.sidebarCollapsed)
@@ -68,11 +33,11 @@ export function AppShell() {
   useHotkey('1', (e) => notTyping(e) && navigate('/'))
   useHotkey('2', (e) => notTyping(e) && navigate('/reviews'))
   useHotkey('3', (e) => notTyping(e) && navigate('/analytics'))
+  useHotkey('4', (e) => notTyping(e) && navigate('/team'))
 
   return (
     <div className="min-h-screen">
       <AuroraBackground />
-      <CursorGlow />
       <Sidebar />
       <MobileNav />
 

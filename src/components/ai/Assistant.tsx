@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, Send, X, Mic, Square } from 'lucide-react'
 import { useWorkspace, useToasts } from '@/store/workspace'
-import { assistantSuggestions } from '@/lib/data'
+import { useDataset } from '@/lib/data'
 import { streamAssistantReply, aiIsLive, type ChatTurn } from '@/lib/ai'
 import { useHotkey } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
@@ -23,12 +23,7 @@ export function AssistantOrb() {
       aria-label="Open AI assistant"
       className="fixed right-6 bottom-24 z-50 grid h-14 w-14 place-items-center rounded-full md:bottom-8"
     >
-      <span className="animate-orb absolute inset-0 rounded-full bg-gradient-to-br from-pulse-500 via-aura-500 to-cyan-glow shadow-glow" />
-      <span className="absolute inset-0 rounded-full [animation:pulse-ring_2.6s_ease-out_infinite] bg-pulse-500/50" />
-      <span
-        className="absolute inset-0 rounded-full [animation:pulse-ring_2.6s_ease-out_infinite] bg-aura-500/40"
-        style={{ animationDelay: '1.3s' }}
-      />
+      <span className="absolute inset-0 rounded-full bg-gradient-to-br from-pulse-500 via-aura-500 to-cyan-glow shadow-glow" />
       <motion.span animate={{ rotate: open ? 90 : 0 }} className="relative z-10 text-pure">
         {open ? <X size={22} /> : <Sparkles size={22} />}
       </motion.span>
@@ -105,10 +100,12 @@ export function AssistantPanel() {
     }
   }
 
+  const dataset = useDataset()
+
   const toggleVoice = () => {
     if (listening) {
       setListening(false)
-      void ask('Summarize this week’s negative reviews')
+      void ask('Summarize this week’s reviews')
     } else {
       setListening(true)
       pushToast({ tone: 'info', title: 'Listening…', body: 'Speak naturally — tap again to stop.' })
@@ -132,7 +129,7 @@ export function AssistantPanel() {
         >
           <div className="relative flex items-center gap-3 border-b border-edge px-5 py-4">
             <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-pulse-500/12 to-transparent" />
-            <div className="animate-orb relative grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-pulse-500 via-aura-500 to-cyan-glow shadow-glow-sm">
+            <div className="relative grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-pulse-500 via-aura-500 to-cyan-glow shadow-glow-sm">
               <Sparkles size={18} className="text-pure" />
             </div>
             <div className="relative flex-1">
@@ -160,15 +157,15 @@ export function AssistantPanel() {
               >
                 <div className="text-center">
                   <div className="font-display text-lg font-semibold text-mist-50">
-                    Hi Mantoo{' '}
-                    <span className="inline-block animate-[float-slow_3s_ease-in-out_infinite]">👋</span>
+                    Hi Mantoo <span className="inline-block">👋</span>
                   </div>
                   <p className="mx-auto mt-1 max-w-[260px] text-sm text-mist-400">
-                    Ask me anything about your reviews, sentiment, or team performance.
+                    I'm your AI business advisor — ask me anything about your reviews, customers, or
+                    reputation.
                   </p>
                 </div>
                 <div className="space-y-2">
-                  {assistantSuggestions.map((s, i) => (
+                  {dataset.suggestions.map((s, i) => (
                     <motion.button
                       key={s}
                       initial={{ opacity: 0, x: 16 }}

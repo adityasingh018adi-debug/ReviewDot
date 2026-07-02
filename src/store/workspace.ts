@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { ReviewStatus } from '@/lib/data'
 
-export const DEFAULT_WIDGET_ORDER = ['trend', 'sentiment', 'activity', 'insights', 'platforms', 'heatmap']
+export const DEFAULT_WIDGET_ORDER = ['health', 'sentiment', 'trend', 'topics', 'actions', 'activity']
 
 export type Theme = 'dark' | 'light'
 
@@ -62,15 +62,19 @@ export const useWorkspace = create<WorkspaceState>()(
 export interface ReviewOverride {
   status?: ReviewStatus
   publishedReply?: string
+  note?: string
+  extraTags?: string[]
 }
 
 interface ReviewActionsState {
   overrides: Record<string, ReviewOverride>
   publishReply: (reviewId: string, reply: string) => void
   setStatus: (reviewId: string, status: ReviewStatus) => void
+  setNote: (reviewId: string, note: string) => void
+  addTag: (reviewId: string, tag: string) => void
 }
 
-/** Optimistic, locally-persisted review actions — approvals and status changes survive reloads. */
+/** Optimistic, locally-persisted review actions — replies, statuses, notes, and tags survive reloads. */
 export const useReviewActions = create<ReviewActionsState>()(
   persist(
     (set) => ({
@@ -79,15 +83,32 @@ export const useReviewActions = create<ReviewActionsState>()(
         set((s) => ({
           overrides: {
             ...s.overrides,
-            [reviewId]: { ...s.overrides[reviewId], status: 'responded', publishedReply: reply },
+            [reviewId]: { ...s.overrides[reviewId], status: 'replied', publishedReply: reply },
           },
         })),
       setStatus: (reviewId, status) =>
         set((s) => ({
           overrides: { ...s.overrides, [reviewId]: { ...s.overrides[reviewId], status } },
         })),
+      setNote: (reviewId, note) =>
+        set((s) => ({
+          overrides: { ...s.overrides, [reviewId]: { ...s.overrides[reviewId], note } },
+        })),
+      addTag: (reviewId, tag) =>
+        set((s) => {
+          const clean = tag.trim().toLowerCase().replace(/\s+/g, '-')
+          if (!clean) return s
+          const existing = s.overrides[reviewId]?.extraTags ?? []
+          if (existing.includes(clean)) return s
+          return {
+            overrides: {
+              ...s.overrides,
+              [reviewId]: { ...s.overrides[reviewId], extraTags: [...existing, clean] },
+            },
+          }
+        }),
     }),
-    { name: 'reviewdot-review-actions' },
+    { name: 'reviewdot-review-actions', version: 1, migrate: () => ({ overrides: {} }) },
   ),
 )
 

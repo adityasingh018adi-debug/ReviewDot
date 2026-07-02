@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   MessageSquareText,
   BarChart3,
+  Users,
   Settings,
   ChevronsLeft,
   Sparkles,
@@ -16,6 +17,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/reviews', label: 'Reviews', icon: MessageSquareText, badge: 12 },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { to: '/team', label: 'Team', icon: Users },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 

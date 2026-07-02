@@ -10,7 +10,7 @@ export function NotFound() {
       className="grid min-h-[60vh] place-items-center text-center"
     >
       <div>
-        <div className="animate-float-slow mx-auto grid h-20 w-20 place-items-center rounded-3xl border border-white/10 bg-white/5">
+        <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl border border-white/10 bg-white/5">
           <Compass size={36} className="text-pulse-300" />
         </div>
         <div className="font-display mt-6 text-6xl font-bold text-gradient">404</div>

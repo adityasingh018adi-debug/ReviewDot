@@ -170,43 +170,6 @@ body {
   color: transparent;
 }
 
-@utility perspective-deep {
-  perspective: 1400px;
-}
-
-@utility preserve-3d {
-  transform-style: preserve-3d;
-}
-
-@keyframes aurora-drift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  33% {
-    transform: translate3d(6%, -8%, 0) scale(1.12);
-  }
-  66% {
-    transform: translate3d(-7%, 5%, 0) scale(0.94);
-  }
-}
-
-@keyframes float-slow {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-18px) rotate(4deg);
-  }
-}
-
-@keyframes spin-slow {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @keyframes shimmer {
   from {
     background-position: 200% 0;
@@ -214,56 +177,6 @@ body {
   to {
     background-position: -200% 0;
   }
-}
-
-@keyframes pulse-ring {
-  0% {
-    transform: scale(1);
-    opacity: 0.6;
-  }
-  100% {
-    transform: scale(2.1);
-    opacity: 0;
-  }
-}
-
-@keyframes orb-breathe {
-  0%,
-  100% {
-    transform: scale(1);
-    filter: brightness(1);
-  }
-  50% {
-    transform: scale(1.06);
-    filter: brightness(1.25);
-  }
-}
-
-@keyframes grid-pan {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: 0 56px;
-  }
-}
-
-.animate-aurora {
-  animation: aurora-drift 26s ease-in-out infinite;
-  will-change: transform;
-}
-
-.animate-float-slow {
-  animation: float-slow 9s ease-in-out infinite;
-  will-change: transform;
-}
-
-.animate-spin-slow {
-  animation: spin-slow 22s linear infinite;
-}
-
-.animate-orb {
-  animation: orb-breathe 3.4s ease-in-out infinite;
 }
 
 .skeleton {
@@ -302,6 +215,57 @@ body {
 
 .mask-fade-b {
   mask-image: linear-gradient(to bottom, black 60%, transparent);
+}
+
+/* PDF report: hide the app, print only the report content */
+@media print {
+  body {
+    background: #fff;
+    color: #111;
+  }
+  body * {
+    visibility: hidden;
+  }
+  #print-report,
+  #print-report * {
+    visibility: visible;
+  }
+  #print-report {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 2rem;
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #111;
+  }
+  #print-report h1 {
+    font-size: 22pt;
+    margin-bottom: 4pt;
+  }
+  #print-report h2 {
+    font-size: 14pt;
+    margin: 16pt 0 6pt;
+    border-bottom: 1px solid #999;
+    padding-bottom: 3pt;
+  }
+  #print-report table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5pt;
+  }
+  #print-report td {
+    padding: 4pt 8pt 4pt 0;
+    border-bottom: 1px solid #ddd;
+  }
+  #print-report ol {
+    font-size: 10.5pt;
+    padding-left: 16pt;
+  }
+  #print-report li {
+    margin-bottom: 6pt;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

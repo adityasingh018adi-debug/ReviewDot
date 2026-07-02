@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   MessageSquareText,
   BarChart3,
+  Users,
   Settings,
   Sparkles,
   Plus,
@@ -17,6 +18,7 @@ import {
   History,
 } from 'lucide-react'
 import { useWorkspace, useToasts } from '@/store/workspace'
+import { useDataset } from '@/lib/data'
 import { exportReviewsCsv } from '@/lib/export'
 import { fuzzyScore } from '@/lib/fuzzy'
 import { useHotkey } from '@/lib/hooks'
@@ -68,6 +70,7 @@ function PaletteDialog({ close }: { close: () => void }) {
   const setAssistantOpen = useWorkspace((s) => s.setAssistantOpen)
   const pushToast = useToasts((s) => s.push)
   const navigate = useNavigate()
+  const dataset = useDataset()
 
   const [query, setQuery] = useState('')
   const [index, setIndex] = useState(0)
@@ -99,6 +102,14 @@ function PaletteDialog({ close }: { close: () => void }) {
         section: 'Navigate',
         icon: BarChart3,
         run: () => navigate('/analytics'),
+      },
+      {
+        id: 'nav-team',
+        label: 'Go to Team',
+        hint: '4',
+        section: 'Navigate',
+        icon: Users,
+        run: () => navigate('/team'),
       },
       {
         id: 'nav-settings',
@@ -133,7 +144,7 @@ function PaletteDialog({ close }: { close: () => void }) {
         section: 'Actions',
         icon: Download,
         run: () => {
-          exportReviewsCsv()
+          exportReviewsCsv(dataset)
           pushToast({ tone: 'success', title: 'Export ready', body: 'reviewdot-reviews.csv downloaded.' })
         },
       },
@@ -153,7 +164,7 @@ function PaletteDialog({ close }: { close: () => void }) {
         run: toggleTheme,
       },
     ],
-    [navigate, pushToast, setAssistantOpen, toggleSidebar, theme, toggleTheme],
+    [navigate, pushToast, setAssistantOpen, toggleSidebar, theme, toggleTheme, dataset],
   )
 
   const filtered = useMemo(() => {
