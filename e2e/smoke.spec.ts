@@ -3,7 +3,6 @@ import { test, expect, type Page } from '@playwright/test'
 async function enterWorkspace(page: Page) {
   await page.goto('/')
   await page.evaluate(() => {
-  localStorage.removeItem('reviewdot-business')
   localStorage.removeItem('reviewdot-review-actions')
   localStorage.setItem(
     'reviewdot-workspace',
