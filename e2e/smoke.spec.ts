@@ -3,11 +3,13 @@ import { test, expect, type Page } from '@playwright/test'
 async function enterWorkspace(page: Page) {
   await page.goto('/')
   await page.evaluate(() => {
-    localStorage.setItem(
-      'reviewdot-workspace',
-      JSON.stringify({ state: { onboardingDone: true }, version: 0 }),
-    )
-  })
+  localStorage.removeItem('reviewdot-business')
+  localStorage.removeItem('reviewdot-review-actions')
+  localStorage.setItem(
+    'reviewdot-workspace',
+    JSON.stringify({ state: { onboardingDone: true }, version: 0 }),
+  )
+})
   await page.reload()
   await expect(page.getByText('Your reputation')).toBeVisible({ timeout: 10_000 })
 }
