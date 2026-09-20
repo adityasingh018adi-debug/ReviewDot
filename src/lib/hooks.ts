@@ -1,77 +1,95 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useApp } from '@/store/app'
 
-/** Animated count-up that eases toward `target` whenever it changes. */
-export function useCountUp(target: number, duration = 1200, decimals = 0) {
+/** Keeps the <html data-theme> attribute in sync with the store. */
+export function useThemeEffect() {
+  const theme = useApp((s) => s.theme)
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    document.documentElement.style.colorScheme = theme
+  }, [theme])
+}
+
+/** Subscribes to a media query without re-running state updates on every render. */
+function subscribeMedia(query: string) {
+  return (onChange: () => void) => {
+    const list = window.matchMedia(query)
+    list.addEventListener('change', onChange)
+    return () => list.removeEventListener('change', onChange)
+  }
+}
+
+export function usePrefersReducedMotion(): boolean {
+  return useSyncExternalStore(
+    subscribeMedia('(prefers-reduced-motion: reduce)'),
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    () => false,
+  )
+}
+
+export function useClickOutside<T extends HTMLElement>(onOutside: () => void) {
+  const ref = useRef<T>(null)
+  useEffect(() => {
+    const handler = (event: MouseEvent | TouchEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) onOutside()
+    }
+    document.addEventListener('mousedown', handler)
+    document.addEventListener('touchstart', handler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('touchstart', handler)
+    }
+  }, [onOutside])
+  return ref
+}
+
+export function useEscape(onEscape: () => void) {
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onEscape()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onEscape])
+}
+
+/** Counts up to `value` once the component mounts, unless motion is reduced. */
+export function useCountUp(value: number, duration = 900): number {
+  const reduced = usePrefersReducedMotion()
   const [display, setDisplay] = useState(0)
-  const fromRef = useRef(0)
-  const rafRef = useRef(0)
 
   useEffect(() => {
-    const from = fromRef.current
+    if (reduced) return
+    let frame = 0
     const start = performance.now()
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration)
-      const eased = 1 - Math.pow(1 - t, 4)
-      const value = from + (target - from) * eased
-      setDisplay(Number(value.toFixed(decimals)))
-      if (t < 1) rafRef.current = requestAnimationFrame(tick)
-      else fromRef.current = target
+      const progress = Math.min(1, (now - start) / duration)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setDisplay(value * eased)
+      if (progress < 1) frame = requestAnimationFrame(tick)
     }
-    rafRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [target, duration, decimals])
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [value, duration, reduced])
 
-  return display
+  return reduced ? value : display
 }
 
-/** Global keyboard shortcut. `combo` example: "mod+k", "escape", "g d". */
-export function useHotkey(combo: string, handler: (e: KeyboardEvent) => void, enabled = true) {
-  const handlerRef = useRef(handler)
-  useEffect(() => {
-    handlerRef.current = handler
-  })
-
-  useEffect(() => {
-    if (!enabled) return
-    const parts = combo.toLowerCase().split('+')
-    const needMod = parts.includes('mod')
-    const needShift = parts.includes('shift')
-    const key = parts[parts.length - 1]
-
-    const onKey = (e: KeyboardEvent) => {
-      const mod = e.metaKey || e.ctrlKey
-      if (needMod !== mod) return
-      if (needShift !== e.shiftKey) return
-      if (e.key.toLowerCase() !== key) return
-      handlerRef.current(e)
+export function useCopy(resetAfter = 1800) {
+  const [copied, setCopied] = useState(false)
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      const field = document.createElement('textarea')
+      field.value = text
+      document.body.append(field)
+      field.select()
+      document.execCommand('copy')
+      field.remove()
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [combo, enabled])
-}
-
-export function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia(query).matches : false,
-  )
-  useEffect(() => {
-    const mq = window.matchMedia(query)
-    const onChange = () => setMatches(mq.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [query])
-  return matches
-}
-
-/** Re-renders on an interval — used for live timestamps and simulated realtime data. */
-export function useInterval(callback: () => void, delayMs: number | null) {
-  const saved = useRef(callback)
-  useEffect(() => {
-    saved.current = callback
-  })
-  useEffect(() => {
-    if (delayMs === null) return
-    const id = setInterval(() => saved.current(), delayMs)
-    return () => clearInterval(id)
-  }, [delayMs])
+    setCopied(true)
+    setTimeout(() => setCopied(false), resetAfter)
+  }
+  return { copied, copy }
 }

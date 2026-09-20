@@ -1,60 +1,62 @@
-import { motion } from 'framer-motion'
-import { TrendingUp, TrendingDown } from 'lucide-react'
-import { AnimatedNumber } from '@/components/ui/AnimatedNumber'
+import type { LucideIcon } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 import { Sparkline } from '@/components/charts/Sparkline'
-import type { KpiSeed } from '@/lib/data'
+import { useCountUp } from '@/lib/hooks'
+import { cn, formatTrend } from '@/lib/utils'
 
-const accents = [
-  'var(--color-pulse-400)',
-  'var(--color-cyan-glow)',
-  'var(--color-mint-400)',
-  'var(--color-aura-400)',
-]
-
-export function KpiCard({ kpi, index, live }: { kpi: KpiSeed; index: number; live: number }) {
-  const up = kpi.delta >= 0
-  const accent = accents[index % accents.length]
+export function KpiCard({
+  label,
+  value,
+  numeric,
+  format,
+  trend,
+  icon: Icon,
+  series,
+  invertTrend = false,
+}: {
+  label: string
+  value?: string
+  numeric?: number
+  format?: (value: number) => string
+  trend: number
+  icon: LucideIcon
+  series?: number[]
+  invertTrend?: boolean
+}) {
+  const animated = useCountUp(numeric ?? 0)
+  const positive = invertTrend ? trend <= 0 : trend >= 0
+  const display = value ?? (format ? format(animated) : Math.round(animated).toString())
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -4, rotateX: 1.5, rotateY: -1.5, transition: { duration: 0.2 } }}
-      style={{ transformPerspective: 900 }}
-      transition={{ delay: 0.05 + index * 0.05, duration: 0.35, ease: 'easeOut' }}
-      className="glass group relative overflow-hidden rounded-2xl p-5 shadow-panel transition-colors duration-300 hover:border-white/20 hover:shadow-glow-sm"
-    >
-      <div
-        className="absolute -top-10 -right-10 h-28 w-28 rounded-full opacity-20 blur-2xl"
-        style={{ background: accent }}
-      />
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-xs font-medium tracking-wide text-mist-400 uppercase">{kpi.label}</div>
-          <div className="font-display mt-2 text-3xl font-bold text-mist-50">
-            <AnimatedNumber
-              value={live}
-              decimals={kpi.decimals ?? 0}
-              prefix={kpi.prefix}
-              suffix={kpi.suffix}
-            />
-          </div>
-        </div>
-        <span
-          className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold"
-          style={{
-            color: up ? 'var(--color-mint-400)' : 'var(--color-rose-glow)',
-            background: up ? 'rgb(67 222 160 / 0.1)' : 'rgb(251 109 136 / 0.1)',
-          }}
-        >
-          {up ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-          {Math.abs(kpi.delta)}%
+    <div className="rounded-3xl border border-line bg-surface p-5 shadow-soft transition-shadow duration-300 hover:shadow-card">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[12px] font-medium text-muted">{label}</p>
+        <span className="grid size-8 place-items-center rounded-xl bg-raised text-muted">
+          <Icon size={15} strokeWidth={1.9} />
         </span>
       </div>
-      <div className="mt-4 flex items-end justify-between">
-        <span className="text-[11px] text-mist-500">vs. last month</span>
-        <Sparkline values={kpi.spark} color={accent} width={110} height={34} />
+      <p className="mt-3 font-display text-[30px] font-semibold leading-none tracking-tight tabular-nums text-ink">
+        {display}
+      </p>
+      <div className="mt-3 flex items-end justify-between gap-3">
+        <span
+          className={cn(
+            'inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[12px] font-medium',
+            positive ? 'text-brand-600' : 'text-danger',
+          )}
+        >
+          {positive ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
+          {formatTrend(trend)}
+          <span className="font-normal text-faint">vs prev.</span>
+        </span>
+        {series && series.length > 1 ? (
+          <Sparkline
+            values={series}
+            width={92}
+            color={positive ? 'var(--color-chart-1)' : 'var(--color-danger)'}
+          />
+        ) : null}
       </div>
-    </motion.div>
+    </div>
   )
 }

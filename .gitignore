@@ -5,3 +5,6 @@ dist-ssr
 .DS_Store
 *.tsbuildinfo
 npm-debug.log*
+
+test-results
+playwright-report
