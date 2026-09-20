@@ -65,11 +65,13 @@ jobs:
       - name: Build for Hostinger
         run: npm run build
 
-      - name: Deploy to Hostinger
-        uses: genietim/ftp-action@releases/v4
-        with:
-          host: ${{ secrets.FTP_HOST }}
-          user: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          localDir: "dist"
-          remoteDir: "public_html"
+   - name: Deploy to Hostinger
+  uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+  with:
+    server: ${{ secrets.FTP_HOST }}
+    username: ${{ secrets.FTP_USERNAME }}
+    password: ${{ secrets.FTP_PASSWORD }}
+    protocol: ftp
+    port: 21
+    local-dir: ./dist/
+    server-dir: ./public_html/
