@@ -103,6 +103,16 @@ src/
 e2e/             Playwright smoke tests
 ```
 
+## Deploying
+
+Pushing to the repository's default branch (`claude/premium-ai-review-saas-vy8lou`) runs CI and, once
+lint, unit tests, the type-checked build and the Playwright suite all pass, uploads `dist/` to Hostinger
+`public_html/` over FTP — the live site at reviewdot.in. Feature branches build and test but do not deploy.
+
+```bash
+git push origin HEAD:claude/premium-ai-review-saas-vy8lou   # ships to reviewdot.in
+```
+
 ## Notes
 
 - Hero stats (10K+ / 1M+ / 4.8★) and testimonials are illustrative placeholders for the marketing page.
