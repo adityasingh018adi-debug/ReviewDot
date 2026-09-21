@@ -1,71 +1,82 @@
-import { forwardRef, useRef, type ButtonHTMLAttributes, type MouseEvent } from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 
-type Variant = 'primary' | 'ghost' | 'glass' | 'danger'
-type Size = 'sm' | 'md' | 'lg' | 'icon'
+type Variant = 'primary' | 'secondary' | 'ghost' | 'subtle' | 'danger'
+type Size = 'sm' | 'md' | 'lg'
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+const VARIANTS: Record<Variant, string> = {
+  primary: 'bg-accent text-on-accent hover:brightness-110 shadow-soft',
+  secondary: 'bg-surface text-ink border border-line hover:border-line-strong hover:bg-raised',
+  ghost: 'text-ink-soft hover:text-ink hover:bg-raised',
+  subtle: 'bg-raised text-ink border border-transparent hover:border-line',
+  danger: 'bg-danger text-white hover:brightness-110',
+}
+
+const SIZES: Record<Size, string> = {
+  sm: 'h-9 px-3.5 text-[13px] rounded-xl gap-1.5',
+  md: 'h-11 px-5 text-sm rounded-2xl gap-2',
+  lg: 'h-13 px-6 text-[15px] rounded-2xl gap-2',
+}
+
+export const buttonClass = (variant: Variant = 'primary', size: Size = 'md', className?: string) =>
+  cn(
+    'inline-flex items-center justify-center font-medium transition-all duration-200 whitespace-nowrap',
+    'disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]',
+    VARIANTS[variant],
+    SIZES[size],
+    className,
+  )
+
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant
   size?: Size
+  children: ReactNode
 }
 
-const variants: Record<Variant, string> = {
-  primary:
-    'bg-gradient-to-br from-pulse-500 to-aura-500 text-pure shadow-glow-sm hover:shadow-glow hover:brightness-110',
-  ghost: 'text-mist-300 hover:text-mist-50 hover:bg-white/6',
-  glass: 'glass text-mist-100 hover:bg-white/10 hover:border-white/20',
-  danger: 'bg-rose-glow/15 text-rose-glow border border-rose-glow/30 hover:bg-rose-glow/25',
-}
-
-const sizes: Record<Size, string> = {
-  sm: 'h-8 px-3 text-xs gap-1.5',
-  md: 'h-10 px-4 text-sm gap-2',
-  lg: 'h-12 px-6 text-sm gap-2',
-  icon: 'h-9 w-9 shrink-0',
-}
-
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { className, variant = 'glass', size = 'md', onClick, children, ...props },
-  ref,
-) {
-  const innerRef = useRef<HTMLButtonElement | null>(null)
-
-  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
-    const el = innerRef.current
-    if (el) {
-      const rect = el.getBoundingClientRect()
-      const ripple = document.createElement('span')
-      const size = Math.max(rect.width, rect.height)
-      ripple.className = 'ripple-ink'
-      ripple.style.width = ripple.style.height = `${size}px`
-      ripple.style.left = `${e.clientX - rect.left - size / 2}px`
-      ripple.style.top = `${e.clientY - rect.top - size / 2}px`
-      el.appendChild(ripple)
-      setTimeout(() => ripple.remove(), 650)
-    }
-    onClick?.(e)
-  }
-
+export function Button({ variant = 'primary', size = 'md', className, children, ...props }: ButtonProps) {
   return (
-    <button
-      ref={(node) => {
-        innerRef.current = node
-        if (typeof ref === 'function') ref(node)
-        else if (ref) ref.current = node
-      }}
-      onClick={handleClick}
-      className={cn(
-        'relative inline-flex items-center justify-center overflow-hidden rounded-xl font-medium',
-        'transition-all duration-200 active:scale-[0.97] cursor-pointer select-none',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pulse-400',
-        'disabled:pointer-events-none disabled:opacity-50',
-        variants[variant],
-        sizes[size],
-        className,
-      )}
-      {...props}
-    >
+    <button className={buttonClass(variant, size, className)} {...props}>
       {children}
     </button>
   )
-})
+}
+
+type ButtonLinkProps = {
+  to: string
+  variant?: Variant
+  size?: Size
+  className?: string
+  children: ReactNode
+  external?: boolean
+  onClick?: () => void
+}
+
+export function ButtonLink({
+  to,
+  variant = 'primary',
+  size = 'md',
+  className,
+  children,
+  external,
+  onClick,
+}: ButtonLinkProps) {
+  if (external) {
+    return (
+      <a
+        href={to}
+        target="_blank"
+        rel="noreferrer noopener"
+        className={buttonClass(variant, size, className)}
+        onClick={onClick}
+      >
+        {children}
+      </a>
+    )
+  }
+  return (
+    <Link to={to} className={buttonClass(variant, size, className)} onClick={onClick}>
+      {children}
+    </Link>
+  )
+}

@@ -1,36 +1,37 @@
-import { describe, it, expect } from 'vitest'
-import { cn, formatCompact, timeAgo, clamp } from './utils'
+import { describe, expect, it } from 'vitest'
+import { clamp, formatCompact, formatPercent, formatTrend, groupBy, initialsOf, slugify, trend } from './utils'
 
-describe('cn', () => {
-  it('joins truthy classes and drops falsy ones', () => {
-    expect(cn('a', false, 'b', null, undefined, 'c')).toBe('a b c')
+describe('formatting helpers', () => {
+  it('compacts large numbers', () => {
+    expect(formatCompact(940)).toBe('940')
+    expect(formatCompact(1000)).toBe('1K')
+    expect(formatCompact(1248)).toBe('1.2K')
+    expect(formatCompact(1_000_000)).toBe('1M')
+  })
+
+  it('formats percentages and trends', () => {
+    expect(formatPercent(0.2612)).toBe('26.1%')
+    expect(formatTrend(0.12)).toBe('+12%')
+    expect(formatTrend(-0.08)).toBe('-8%')
+  })
+
+  it('computes period-over-period trend safely', () => {
+    expect(trend(1248, 1114)).toBeCloseTo(0.12, 2)
+    expect(trend(10, 0)).toBe(1)
+    expect(trend(0, 0)).toBe(0)
   })
 })
 
-describe('formatCompact', () => {
-  it('formats thousands and millions', () => {
-    expect(formatCompact(950)).toBe('950')
-    expect(formatCompact(1500)).toBe('1.5K')
-    expect(formatCompact(2_400_000)).toBe('2.4M')
+describe('small utilities', () => {
+  it('clamps, slugifies and derives initials', () => {
+    expect(clamp(7, 0, 5)).toBe(5)
+    expect(slugify('Mango Cheesecake!')).toBe('mango-cheesecake')
+    expect(initialsOf('Love & Latte')).toBe('L&')
   })
-  it('handles negatives', () => {
-    expect(formatCompact(-1500)).toBe('-1.5K')
-  })
-})
 
-describe('timeAgo', () => {
-  it('describes recent times', () => {
-    expect(timeAgo(new Date(Date.now() - 30_000))).toBe('just now')
-    expect(timeAgo(new Date(Date.now() - 5 * 60_000))).toBe('5m ago')
-    expect(timeAgo(new Date(Date.now() - 3 * 3600_000))).toBe('3h ago')
-    expect(timeAgo(new Date(Date.now() - 2 * 86_400_000))).toBe('2d ago')
-  })
-})
-
-describe('clamp', () => {
-  it('bounds values', () => {
-    expect(clamp(5, 0, 10)).toBe(5)
-    expect(clamp(-1, 0, 10)).toBe(0)
-    expect(clamp(99, 0, 10)).toBe(10)
+  it('groups while preserving order', () => {
+    const grouped = groupBy([{ t: 'a' }, { t: 'b' }, { t: 'a' }], (x) => x.t)
+    expect([...grouped.keys()]).toEqual(['a', 'b'])
+    expect(grouped.get('a')).toHaveLength(2)
   })
 })
