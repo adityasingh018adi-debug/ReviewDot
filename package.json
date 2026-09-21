@@ -3,10 +3,11 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "ReviewDot — enterprise-grade AI review management platform",
+  "description": "ReviewDot \u2014 enterprise-grade AI review management platform",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:preview": "vite build --config vite.preview.config.ts",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write src e2e",
