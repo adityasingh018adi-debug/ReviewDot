@@ -5,18 +5,25 @@ React 18 · TypeScript · Vite · Tailwind v4 · Zustand · React Router · Vite
 
 ## Deploy pipeline
 
-Live site: **reviewdot.in**, served from Hostinger `public_html/`.
+Live site: **reviewdot.in**, hosted on Hostinger as a **Node.js app deployment** (hPanel → Websites →
+Deployments), not as static files in `public_html/`. `npm start` runs `server.js`, which serves the
+Vite build in `dist/` with an SPA fallback.
 
-```
-commit → push to the default branch → GitHub Actions (.github/workflows/ci.yml) → FTP upload to Hostinger
+- The CI `deploy` job FTP-uploads `dist/` to `public_html/`. **That path does not feed reviewdot.in**
+  under the current hosting setup — a green deploy job is not proof the site changed.
+- To ship to the live site, build the deployment bundle and upload it in hPanel → Deployments
+  (or connect that deployment to this repo so it deploys on push):
+
+```bash
+npm run build && npm run bundle    # writes reviewdot-hostinger.zip (dist/ + server.js + package.json)
 ```
 
-- The **default branch** is `claude/premium-ai-review-saas-vy8lou`. The `deploy` job runs only there.
-- Feature work happens on `claude/amazing-rubin-enoruh`, then merges into the default branch to ship.
+- The **default branch** is `claude/premium-ai-review-saas-vy8lou`; the CI `deploy` job runs only there.
+- Feature work happens on `claude/amazing-rubin-enoruh`, then merges into the default branch.
 - `deploy` runs only after `verify` passes: lint → unit tests → type-checked build → Playwright e2e.
-  A red `verify` means nothing is uploaded.
 - FTP credentials live in repo secrets (`FTP_HOST`, `FTP_USERNAME`, `FTP_PASSWORD`). They are never
   needed locally and must never be printed or committed.
+- After any deploy, confirm the live site actually changed before reporting it as shipped.
 
 ### To ship a change
 

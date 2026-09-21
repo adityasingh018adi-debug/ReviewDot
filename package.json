@@ -3,11 +3,13 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "ReviewDot \u2014 enterprise-grade AI review management platform",
+  "description": "ReviewDot \u2014 QR-powered customer experience and review intelligence platform",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "start": "node server.js",
     "build:preview": "vite build --config vite.preview.config.ts",
+    "bundle": "node scripts/bundle.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write src e2e",
@@ -46,5 +48,8 @@
     "typescript-eslint": "^8.62.1",
     "vite": "^6.1.0",
     "vitest": "^4.1.9"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

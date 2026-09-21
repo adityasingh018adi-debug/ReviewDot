@@ -105,13 +105,17 @@ e2e/             Playwright smoke tests
 
 ## Deploying
 
-Pushing to the repository's default branch (`claude/premium-ai-review-saas-vy8lou`) runs CI and, once
-lint, unit tests, the type-checked build and the Playwright suite all pass, uploads `dist/` to Hostinger
-`public_html/` over FTP — the live site at reviewdot.in. Feature branches build and test but do not deploy.
+reviewdot.in runs on Hostinger as a Node.js app: `npm start` boots `server.js`, a zero-dependency
+static server that serves `dist/` with an SPA fallback and long-lived caching for hashed assets.
 
 ```bash
-git push origin HEAD:claude/premium-ai-review-saas-vy8lou   # ships to reviewdot.in
+npm run build && npm run bundle   # → reviewdot-hostinger.zip (dist/ + server.js + package.json)
 ```
+
+Upload that bundle in hPanel → Websites → Deployments, or point the deployment at this repository so
+it ships on push. Pushing to the default branch (`claude/premium-ai-review-saas-vy8lou`) also runs CI
+and FTP-uploads `dist/` to `public_html/`, which is useful for static hosting but is not what the
+domain currently serves.
 
 ## Notes
 
