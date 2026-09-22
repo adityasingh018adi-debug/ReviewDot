@@ -1,4 +1,6 @@
-import { Link } from 'react-router-dom'
+'use client'
+
+import Link from 'next/link'
 import { Logo } from '@/components/ui/Logo'
 
 const COLUMNS = [
@@ -50,7 +52,7 @@ export function SiteFooter() {
             <ul className="mt-4 space-y-2.5">
               {column.links.map((link) => (
                 <li key={link.label}>
-                  <Link to={link.to} className="text-[13px] text-muted transition-colors hover:text-ink">
+                  <Link href={link.to} className="text-[13px] text-muted transition-colors hover:text-ink">
                     {link.label}
                   </Link>
                 </li>
@@ -64,13 +66,13 @@ export function SiteFooter() {
         <div className="container-page flex flex-col items-center justify-between gap-3 py-6 text-[12px] text-faint sm:flex-row">
           <p>© {new Date().getFullYear()} ReviewDot. Every Scan Can Become a Review.</p>
           <p className="flex gap-5">
-            <Link to="/resources" className="transition-colors hover:text-ink">
+            <Link href="/resources" className="transition-colors hover:text-ink">
               Privacy
             </Link>
-            <Link to="/resources" className="transition-colors hover:text-ink">
+            <Link href="/resources" className="transition-colors hover:text-ink">
               Terms
             </Link>
-            <Link to="/resources" className="transition-colors hover:text-ink">
+            <Link href="/resources" className="transition-colors hover:text-ink">
               Security
             </Link>
           </p>

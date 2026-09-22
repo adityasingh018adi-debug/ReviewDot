@@ -1,4 +1,6 @@
-import { Link } from 'react-router-dom'
+'use client'
+
+import Link from 'next/link'
 import { AlertTriangle, ArrowRight, Sparkles, TrendingUp } from 'lucide-react'
 import type { InsightCard } from '@/lib/insights'
 import { cn } from '@/lib/utils'
@@ -33,7 +35,7 @@ export function InsightList({ cards, limit }: { cards: InsightCard[]; limit?: nu
                   </span>
                   {card.href ? (
                     <Link
-                      to={card.href}
+                      href={card.href}
                       className="inline-flex items-center gap-1 text-[12px] font-medium text-accent hover:underline"
                     >
                       {card.action} <ArrowRight size={13} />

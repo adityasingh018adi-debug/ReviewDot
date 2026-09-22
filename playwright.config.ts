@@ -12,9 +12,9 @@ export default defineConfig({
       : {},
   },
   webServer: {
-    command: 'npm run preview -- --port 4173 --strictPort',
+    command: 'npm run build && npx next start --port 4173',
     url: 'http://localhost:4173',
-    reuseExistingServer: true,
-    timeout: 30_000,
+    reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
   },
 })

@@ -1,14 +1,4 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { useApp } from '@/store/app'
-
-/** Keeps the <html data-theme> attribute in sync with the store. */
-export function useThemeEffect() {
-  const theme = useApp((s) => s.theme)
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    document.documentElement.style.colorScheme = theme
-  }, [theme])
-}
 
 /** Subscribes to a media query without re-running state updates on every render. */
 function subscribeMedia(query: string) {

@@ -7,8 +7,6 @@ import type { DataSet, RangeKey, Scope } from '@/lib/metrics'
 import { resolveRange } from '@/lib/metrics'
 import type { Destination, Entry, FeedbackStatus, QRCodeRecord, QRStatus, QRType } from '@/lib/types'
 
-export type Theme = 'light' | 'dark'
-
 export type QRDraft = {
   label: string
   type: QRType
@@ -21,7 +19,6 @@ export type QRDraft = {
 }
 
 type AppState = {
-  theme: Theme
   signedIn: boolean
   outletId: string | 'all'
   rangeKey: RangeKey
@@ -34,10 +31,7 @@ type AppState = {
   submissions: Entry[]
   liveScans: ScanEvent[]
   entryPatches: Record<string, { status?: FeedbackStatus; reply?: string }>
-  apiKey: string
 
-  setTheme: (theme: Theme) => void
-  toggleTheme: () => void
   setSignedIn: (signedIn: boolean) => void
   setOutlet: (outletId: string | 'all') => void
   setRange: (key: RangeKey, custom?: { from: string; to: string }) => void
@@ -47,7 +41,6 @@ type AppState = {
   recordScan: (qrId: string, outletId: string, productId?: string) => void
   submitEntry: (entry: Entry) => void
   patchEntry: (id: string, patch: { status?: FeedbackStatus; reply?: string }) => void
-  setApiKey: (key: string) => void
   resetDemo: () => void
 }
 
@@ -56,7 +49,6 @@ const shortCode = () => Math.random().toString(36).slice(2, 8)
 export const useApp = create<AppState>()(
   persist(
     (set, get) => ({
-      theme: 'light',
       signedIn: false,
       outletId: 'all',
       rangeKey: '30d',
@@ -66,10 +58,7 @@ export const useApp = create<AppState>()(
       submissions: [],
       liveScans: [],
       entryPatches: {},
-      apiKey: '',
 
-      setTheme: (theme) => set({ theme }),
-      toggleTheme: () => set({ theme: get().theme === 'dark' ? 'light' : 'dark' }),
       setSignedIn: (signedIn) => set({ signedIn }),
       setOutlet: (outletId) => set({ outletId }),
       setRange: (rangeKey, customRange) =>
@@ -127,15 +116,13 @@ export const useApp = create<AppState>()(
       patchEntry: (id, patch) =>
         set({ entryPatches: { ...get().entryPatches, [id]: { ...get().entryPatches[id], ...patch } } }),
 
-      setApiKey: (apiKey) => set({ apiKey }),
       resetDemo: () =>
         set({ createdQRs: [], qrPatches: {}, submissions: [], liveScans: [], entryPatches: {} }),
     }),
     {
       name: 'reviewdot',
       version: 1,
-      partialize: ({ theme, signedIn, outletId, rangeKey, customRange, createdQRs, qrPatches, submissions, liveScans, entryPatches, apiKey }) => ({
-        theme,
+      partialize: ({ signedIn, outletId, rangeKey, customRange, createdQRs, qrPatches, submissions, liveScans, entryPatches }) => ({
         signedIn,
         outletId,
         rangeKey,
@@ -145,7 +132,6 @@ export const useApp = create<AppState>()(
         submissions,
         liveScans,
         entryPatches,
-        apiKey,
       }),
     },
   ),

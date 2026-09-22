@@ -1,11 +1,14 @@
 import type { AIReviewService, ReviewDraft, ReviewDraftInput } from './types'
 
 /**
- * AI review writing.
+ * AI review writing — browser-safe half.
  *
  * The product promise is assistance, not invention: a draft may only restate
- * what the customer already said. Both adapters below are checked by
- * `groundingIssues`, which rejects claims the customer never made.
+ * what the customer already said, which `groundingIssues` enforces.
+ *
+ * This module must never import a provider SDK: it is reachable from client
+ * components, so an import here would ship the SDK — and invite a key — into
+ * the browser bundle. The model-backed adapter lives in ai-review.server.ts.
  */
 
 /** Numbers, money and superlatives a customer did not write are not ours to add. */
@@ -98,45 +101,6 @@ export class LocalAIReviewService implements AIReviewService {
       .trim()
 
     return { text, offline: true, ungrounded: groundingIssues(input.comment, text) }
-  }
-}
-
-/**
- * Model-backed adapter. Intended to run server-side only: the API key must never
- * reach the browser, so this is constructed inside an API route with a key read
- * from the server environment.
- */
-export class ClaudeReviewService implements AIReviewService {
-  constructor(
-    private readonly apiKey: string,
-    private readonly model = 'claude-sonnet-5',
-    private readonly fallback: AIReviewService = new LocalAIReviewService(),
-  ) {}
-
-  async draftReview(input: ReviewDraftInput): Promise<ReviewDraft> {
-    try {
-      const { default: Anthropic } = await import('@anthropic-ai/sdk')
-      const client = new Anthropic({ apiKey: this.apiKey })
-      const message = await client.messages.create({
-        model: this.model,
-        max_tokens: 400,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: buildUserPrompt(input) }],
-      })
-
-      const text = message.content
-        .map((block) => (block.type === 'text' ? block.text : ''))
-        .join('')
-        .trim()
-
-      const ungrounded = groundingIssues(input.comment, text)
-      // a draft that invents facts is discarded rather than shown to a customer
-      if (!text || ungrounded.length) return this.fallback.draftReview(input)
-
-      return { text, offline: false, model: this.model, ungrounded: [] }
-    } catch {
-      return this.fallback.draftReview(input)
-    }
   }
 }
 

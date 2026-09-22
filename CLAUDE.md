@@ -1,7 +1,21 @@
 # ReviewDot — working notes for Claude
 
-QR-powered Customer Experience & Review Intelligence platform.
-React 18 · TypeScript · Vite · Tailwind v4 · Zustand · React Router · Vitest · Playwright.
+AI customer review and feedback platform.
+Next.js 15 (App Router) · React 18 · TypeScript · Tailwind v4 · Supabase · Vitest · Playwright.
+
+## Architecture
+
+- `app/` route handlers and pages; `src/views/` holds the page bodies (client
+  components), `src/components/` the shared UI. **Never create `src/pages/`** —
+  Next treats it as the legacy Pages Router and the build fails.
+- Server-only code is separated by filename, not by discipline:
+  `ai-review.server.ts` and `serviceClient()` throw if they ever run in a
+  browser. A client component importing them pulls the Anthropic SDK into the
+  bundle, which is how the key would leak. An e2e test greps every client
+  bundle for `anthropic` and `sk-ant` to keep that honest.
+- AI runs behind `/api/ai/*`. The browser never holds a model key.
+- Tenant isolation lives in Postgres (`supabase/migrations/0002_rls.sql`), not
+  in queries. `src/lib/permissions.ts` mirrors it for the UI only.
 
 ## Deploy pipeline
 
@@ -14,16 +28,10 @@ Vite build in `dist/` with an SPA fallback.
 - To ship to the live site, build a deployment bundle and upload it in hPanel → Deployments
   (or connect that deployment to this repo so it deploys on push):
 
-```bash
-npm run build && npm run bundle:next   # Next.js wrapper — matches the site's Framework: Next.js setting
-npm run build && npm run bundle        # plain Node bundle — needs Framework: Other + output dir `dist`
-```
-
-  The hosting deployment is configured as **Framework: Next.js**, and its build step fails with
-  "No output directory found after build" unless a `.next/` directory is produced. `bundle:next`
-  therefore wraps the Vite build in a real Next.js app: the build output is served from `public/`,
-  and rewrites point `/` and every unmatched path at the app shell. Prefer it unless the framework
-  setting in hPanel has been changed.
+  The app is now a real Next.js project, so the hosting deployment's Framework: Next.js setting
+  matches it directly: `npm install && npm run build && npm start`. No wrapper bundle is needed —
+  zip the repository (without `node_modules` and `.next`) for hPanel → Deployments, or point that
+  deployment at the GitHub repo.
 
 - The **default branch** is `claude/premium-ai-review-saas-vy8lou`; the CI `deploy` job runs only there.
 - Feature work happens on `claude/amazing-rubin-enoruh`, then merges into the default branch.
@@ -47,8 +55,9 @@ default branch unless they have just asked for a deploy.
 
 ## Conventions
 
-- Routing is **hash-based** (`/#/app`, `/#/r/:code`), so Hostinger needs no rewrite rules. Changing
-  to path routing would require an `.htaccess` rewrite as well.
+- Routing is path-based (`/app`, `/r/{public_id}`) and server-rendered; marketing pages must stay
+  crawlable, so keep their copy in server components rather than behind client-only rendering.
+- `import.meta.env` is a Vite API and does not exist here — read `process.env.NEXT_PUBLIC_*`.
 - All screens read one dataset through `src/lib/metrics.ts`; never fetch or compute stats in a page.
   Replacing `src/lib/data.ts` with API calls is the path to a real backend — the types in
   `src/lib/types.ts` are the contract.
@@ -62,10 +71,12 @@ default branch unless they have just asked for a deploy.
 ## Commands
 
 ```bash
-npm run dev            # dev server
-npm run build          # tsc -b + vite build
-npm run build:preview  # single-file bundle (fonts inlined) for a self-contained preview
+npm run dev        # next dev
+npm run build      # next build
+npm start          # next start
 npm run lint
-npm test               # Vitest
-npm run test:e2e       # Playwright
+npm test           # Vitest
+npm run test:e2e   # Playwright (builds and starts the app itself)
+npm run db:migrate # apply supabase/migrations against $DATABASE_URL
+npm run db:test    # run the tenant isolation suite
 ```

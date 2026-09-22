@@ -1,4 +1,6 @@
-import { Link } from 'react-router-dom'
+'use client'
+
+import Link from 'next/link'
 import { ExternalLink, QrCode } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Stars } from '@/components/ui/Stars'
@@ -18,7 +20,7 @@ export function EntryRow({ entry, action }: { entry: Entry; action?: React.React
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <Stars value={entry.rating} />
         <Link
-          to={`/app/products/${entry.productId}`}
+          href={`/app/products/${entry.productId}`}
           className="text-[14px] font-medium text-ink hover:text-accent"
         >
           {product?.emoji} {product?.name}

@@ -1,4 +1,6 @@
-import { Link } from 'react-router-dom'
+'use client'
+
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 export function LogoMark({ size = 32, className }: { size?: number; className?: string }) {
@@ -18,9 +20,9 @@ export function LogoMark({ size = 32, className }: { size?: number; className?: 
   )
 }
 
-export function Logo({ to = '/', className }: { to?: string; className?: string }) {
+export function Logo({ href = '/', className }: { href?: string; className?: string }) {
   return (
-    <Link to={to} className={cn('inline-flex items-center gap-2.5', className)}>
+    <Link href={href} className={cn('inline-flex items-center gap-2.5', className)}>
       <LogoMark />
       <span className="font-display text-[19px] font-semibold tracking-tight text-ink">ReviewDot</span>
     </Link>

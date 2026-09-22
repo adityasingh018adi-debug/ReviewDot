@@ -1,18 +1,20 @@
+'use client'
+
+import Link from 'next/link'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Calendar, ChevronDown, Menu, Moon, Sun } from 'lucide-react'
 import { business, outlets } from '@/lib/data'
 import { RANGE_OPTIONS } from '@/lib/metrics'
 import type { RangeKey } from '@/lib/metrics'
 import { useApp } from '@/store/app'
+import { useTheme } from '@/lib/theme'
 import { useClickOutside } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/Field'
 import { Button } from '@/components/ui/Button'
 
 export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
-  const theme = useApp((s) => s.theme)
-  const toggleTheme = useApp((s) => s.toggleTheme)
+  const { theme, toggle: toggleTheme } = useTheme()
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-xl">
@@ -37,7 +39,7 @@ export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
             {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
           </button>
           <Link
-            to="/app/settings"
+            href="/app/settings"
             className="flex items-center gap-2 rounded-xl border border-line bg-surface py-1.5 pl-1.5 pr-3 transition-colors hover:bg-raised"
           >
             <span className="grid size-7 place-items-center rounded-lg bg-accent text-[11px] font-semibold text-on-accent">

@@ -1,11 +1,13 @@
+'use client'
+
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 
-export function AppLayout() {
+export function AppLayout({ children }: { children: React.ReactNode }) {
   const [navOpen, setNavOpen] = useState(false)
+
   return (
     <div className="flex min-h-screen bg-canvas">
       <aside className="hidden w-64 shrink-0 lg:block">
@@ -39,9 +41,7 @@ export function AppLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenNav={() => setNavOpen(true)} />
-        <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">
-          <Outlet />
-        </main>
+        <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
       </div>
     </div>
   )

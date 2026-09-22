@@ -1,5 +1,7 @@
+'use client'
+
+import Link from 'next/link'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'subtle' | 'danger'
@@ -43,7 +45,7 @@ export function Button({ variant = 'primary', size = 'md', className, children, 
 }
 
 type ButtonLinkProps = {
-  to: string
+  href: string
   variant?: Variant
   size?: Size
   className?: string
@@ -53,7 +55,7 @@ type ButtonLinkProps = {
 }
 
 export function ButtonLink({
-  to,
+  href,
   variant = 'primary',
   size = 'md',
   className,
@@ -64,7 +66,7 @@ export function ButtonLink({
   if (external) {
     return (
       <a
-        href={to}
+        href={href}
         target="_blank"
         rel="noreferrer noopener"
         className={buttonClass(variant, size, className)}
@@ -75,7 +77,7 @@ export function ButtonLink({
     )
   }
   return (
-    <Link to={to} className={buttonClass(variant, size, className)} onClick={onClick}>
+    <Link href={href} className={buttonClass(variant, size, className)} onClick={onClick}>
       {children}
     </Link>
   )

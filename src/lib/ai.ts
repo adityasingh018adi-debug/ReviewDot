@@ -45,37 +45,13 @@ export function contextToPrompt(context: AIContext): string {
   return lines.join('\n')
 }
 
-const SYSTEM_PROMPT = `You are ReviewDot's customer-experience analyst for a multi-outlet food business.
-Answer only from the data provided. Be specific and quantitative, name products and outlets, and finish
-with one concrete action the team can take this week. Keep replies under 120 words. Never invent numbers.`
-
-/**
- * Streams an answer from Claude when the workspace has an API key configured.
- * The SDK is imported on demand so workspaces without a key never download it.
- */
-export async function* streamClaude(
-  apiKey: string,
-  context: AIContext,
-  messages: ChatMessage[],
-): AsyncGenerator<string> {
-  const { default: Anthropic } = await import('@anthropic-ai/sdk')
-  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true })
-  const stream = await client.messages.create({
-    model: 'claude-sonnet-5',
-    max_tokens: 700,
-    system: `${SYSTEM_PROMPT}\n\nWorkspace data:\n${contextToPrompt(context)}`,
-    messages: messages.map((message) => ({ role: message.role, content: message.content })),
-    stream: true,
-  })
-  for await (const event of stream) {
-    if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-      yield event.delta.text
-    }
-  }
-}
-
 /* ------------------------------------------------------------------ *
- * Offline analyst — the product is fully usable without an API key.
+ * Offline analyst.
+ *
+ * Answers from workspace numbers alone, with no network call. The assistant
+ * asks /api/ai/assistant first; this is what replies when no model is
+ * configured or the route is unreachable. Model access lives server-side —
+ * nothing here may import a provider SDK, or the key would ship to browsers.
  * ------------------------------------------------------------------ */
 
 type Rule = { match: RegExp; answer: (context: AIContext) => string }
