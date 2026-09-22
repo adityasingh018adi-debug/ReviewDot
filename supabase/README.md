@@ -7,7 +7,9 @@ Postgres 14+ instance.
 migrations/0001_schema.sql   tables, indexes, triggers
 migrations/0002_rls.sql      row level security — where tenant isolation lives
 migrations/0003_plans.sql    plan catalogue and limits
+migrations/0004_auth.sql     auth.users → profiles, and onboarding
 tests/rls_test.sql           isolation tests; every check raises on failure
+tests/auth_test.sql          signup trigger and onboarding
 ```
 
 ## Applying
@@ -32,8 +34,11 @@ development database. They need the Supabase roles (`anon`, `authenticated`,
 real Supabase project.
 
 ```bash
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/rls_test.sql
+npm run db:test    # runs every file in tests/, in order
 ```
+
+23 isolation checks and 29 auth checks. Both suites run inside a transaction and
+roll back.
 
 A clean run prints one `ok` line per check. Any failure aborts with `FAILED: …`.
 
@@ -56,3 +61,29 @@ platform-admin visibility.
 - Anonymous submissions are gated by `app_campaign_is_live()`, which checks the
   campaign, its outlet and the organization are all active — pausing a QR code
   stops collection without reprinting anything.
+
+## Auth wiring (0004)
+
+Before this migration a signup produced an `auth.users` row, no `profiles` row,
+and therefore no membership — so every policy in 0002 denied the new user
+everything. Three things close that:
+
+- **`profiles.id` → `auth.users(id)`**, `on delete cascade`. Deleting the auth
+  user now removes their profile, and through it their memberships.
+- **`on_auth_user_created` / `on_auth_user_updated`** fill and maintain the
+  profile mirror. They read only the metadata Supabase itself sets, and handle
+  both `full_name` (email signup) and `name`/`avatar_url` (Google).
+- **`app_create_organization()`** creates the organization, the caller's `OWNER`
+  membership, the first outlet and a free subscription in one transaction.
+
+That last one is a `security definer` function rather than an insert policy on
+`organizations` because any policy permissive enough to create the *first*
+organization would also let an authenticated user create unlimited ones with
+arbitrary short codes. The function makes those checks explicitly: caller must
+be authenticated, must not already own an organization, and slug and short code
+are derived and de-duplicated server-side rather than taken from the browser.
+
+Applying 0004 to a database whose `profiles` contain ids with no matching
+`auth.users` row will fail on the foreign key. Reconcile those rows rather than
+dropping the constraint — an unattached profile is one nobody can ever sign in
+as.

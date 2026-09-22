@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "ReviewDot \u2014 QR-powered customer experience and review intelligence platform",
+  "description": "ReviewDot — QR-powered customer experience and review intelligence platform",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -15,13 +15,14 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "db:migrate": "for f in supabase/migrations/*.sql; do psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f \"$f\"; done",
-    "db:test": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f supabase/tests/rls_test.sql"
+    "db:test": "for f in supabase/tests/*.sql; do psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f \"$f\"; done"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.109.1",
     "@fontsource/caveat": "^5.3.0",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/space-grotesk": "^5.2.10",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.0",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.474.0",

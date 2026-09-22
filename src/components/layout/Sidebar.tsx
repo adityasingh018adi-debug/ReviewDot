@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   MessageSquare,
   MessageSquareWarning,
-  Megaphone,
   Package,
   QrCode,
   Settings,
@@ -16,6 +15,7 @@ import {
   Users,
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
+import { useSession } from './SessionProvider'
 import { business, outlets } from '@/lib/data'
 import { useQRCodes } from '@/store/app'
 import { cn } from '@/lib/utils'
@@ -30,14 +30,13 @@ export const NAV_ITEMS = [
   { href: '/app/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/app/insights', label: 'AI insights', icon: Sparkles },
   { href: '/app/customers', label: 'Customers', icon: Users },
-  { href: '/app/team', label: 'Team', icon: Megaphone },
-  { href: '/app/billing', label: 'Billing', icon: Settings },
   { href: '/app/settings', label: 'Settings', icon: Settings },
 ]
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const codes = useQRCodes()
   const pathname = usePathname()
+  const { organization, mode } = useSession()
   return (
     <div className="flex h-full flex-col gap-6 border-r border-line bg-surface px-4 py-5">
       <div className="px-2">
@@ -66,10 +65,23 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="rounded-2xl border border-line bg-raised p-4">
-        <p className="text-[13px] font-semibold text-ink">{business.plan} plan</p>
-        <p className="mt-1 text-[12px] leading-relaxed text-muted">
-          {outlets.length} outlets · {codes.length} QR codes · unlimited reviews
-        </p>
+        {mode === 'demo' ? (
+          <>
+            <p className="text-[13px] font-semibold text-ink">{business.plan} plan</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-muted">
+              {outlets.length} outlets · {codes.length} QR codes · unlimited reviews
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="truncate text-[13px] font-semibold text-ink">
+              {organization?.name ?? 'Your workspace'}
+            </p>
+            {/* Usage counts come from the database in a later phase. Showing the
+                demo figures to a real account would be inventing their numbers. */}
+            <p className="mt-1 text-[12px] leading-relaxed text-muted">Free plan</p>
+          </>
+        )}
         <Link
           href="/pricing"
           className="mt-3 inline-block text-[12px] font-medium text-accent hover:underline"

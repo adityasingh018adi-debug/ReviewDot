@@ -2,13 +2,15 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { Calendar, ChevronDown, Menu, Moon, Sun } from 'lucide-react'
+import { Calendar, ChevronDown, LogOut, Menu, Moon, Settings, Sun } from 'lucide-react'
 import { business, outlets } from '@/lib/data'
 import { RANGE_OPTIONS } from '@/lib/metrics'
 import type { RangeKey } from '@/lib/metrics'
 import { useApp } from '@/store/app'
 import { useTheme } from '@/lib/theme'
 import { useClickOutside } from '@/lib/hooks'
+import { initialsOf, useSession } from './SessionProvider'
+import { signOutAction } from '@/app-actions/auth'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/Field'
 import { Button } from '@/components/ui/Button'
@@ -38,18 +40,77 @@ export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
           >
             {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
           </button>
-          <Link
-            href="/app/settings"
-            className="flex items-center gap-2 rounded-xl border border-line bg-surface py-1.5 pl-1.5 pr-3 transition-colors hover:bg-raised"
-          >
-            <span className="grid size-7 place-items-center rounded-lg bg-accent text-[11px] font-semibold text-on-accent">
-              RS
-            </span>
-            <span className="hidden text-[13px] font-medium text-ink sm:block">Ritika</span>
-          </Link>
+          <AccountMenu />
         </div>
       </div>
     </header>
+  )
+}
+
+/**
+ * The signed-in account. Shows whoever the server resolved — never a name baked
+ * into the component — and is the only place a session can be ended.
+ */
+function AccountMenu() {
+  const { user, organization, mode } = useSession()
+  const [open, setOpen] = useState(false)
+  const ref = useClickOutside<HTMLDivElement>(() => setOpen(false))
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex items-center gap-2 rounded-xl border border-line bg-surface py-1.5 pl-1.5 pr-3 transition-colors hover:bg-raised"
+      >
+        <span className="grid size-7 place-items-center rounded-lg bg-accent text-[11px] font-semibold text-on-accent">
+          {user.initials}
+        </span>
+        <span className="hidden max-w-32 truncate text-[13px] font-medium text-ink sm:block">
+          {user.fullName}
+        </span>
+        <ChevronDown size={14} className="hidden text-faint sm:block" />
+      </button>
+
+      {open ? (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
+        >
+          <div className="border-b border-line px-4 py-3">
+            <p className="truncate text-[13px] font-medium text-ink">{user.fullName}</p>
+            <p className="truncate text-[12px] text-muted">{user.email}</p>
+            {organization ? (
+              <p className="mt-1 truncate text-[12px] text-faint">{organization.name}</p>
+            ) : null}
+          </div>
+
+          <Link
+            href="/app/settings"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-ink-soft transition-colors hover:bg-raised hover:text-ink"
+          >
+            <Settings size={15} /> Settings
+          </Link>
+
+          {mode === 'demo' ? (
+            <p className="border-t border-line px-4 py-2.5 text-[12px] leading-relaxed text-faint">
+              Demo workspace — no account is signed in.
+            </p>
+          ) : (
+            <form action={signOutAction} className="border-t border-line">
+              <button
+                type="submit"
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] text-ink-soft transition-colors hover:bg-raised hover:text-ink"
+              >
+                <LogOut size={15} /> Log out
+              </button>
+            </form>
+          )}
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -96,21 +157,28 @@ const itemClass = (active: boolean) =>
   )
 
 function BusinessPicker() {
+  const { organization, mode } = useSession()
+
+  // The organization comes from the session, so a real account never sees the
+  // demo business in its own workspace.
+  const name = organization?.name ?? business.name
+  const mark = mode === 'demo' ? business.mark : initialsOf(name, 'RD')
+
   return (
     <Popover
       label="Select business"
-      value={business.name}
+      value={name}
       icon={
         <span className="grid size-6 place-items-center rounded-md bg-accent text-[10px] font-semibold text-on-accent">
-          {business.mark}
+          {mark}
         </span>
       }
     >
       {(close) => (
         <>
           <button className={itemClass(true)} onClick={close}>
-            {business.name}
-            <span className="text-[11px] text-faint">{business.plan}</span>
+            {name}
+            {mode === 'demo' ? <span className="text-[11px] text-faint">{business.plan}</span> : null}
           </button>
           <p className="px-3 py-2 text-[12px] text-faint">
             Multi-brand workspaces are available on the Scale plan.

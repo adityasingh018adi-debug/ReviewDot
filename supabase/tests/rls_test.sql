@@ -7,11 +7,13 @@ begin;
 
 -- ---------------------------------------------------------------- fixtures
 
-insert into profiles (id, full_name, email) values
-  ('11111111-1111-1111-1111-111111111111', 'Owner A', 'a@example.com'),
-  ('22222222-2222-2222-2222-222222222222', 'Owner B', 'b@example.com'),
-  ('33333333-3333-3333-3333-333333333333', 'Outlet Manager A', 'm@example.com'),
-  ('99999999-9999-9999-9999-999999999999', 'Platform Admin', 'admin@reviewdot.in');
+-- profiles.id references auth.users(id) since 0004, and the signup trigger
+-- fills the profile in, so fixtures create the auth user and let the trigger run.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('11111111-1111-1111-1111-111111111111', 'a@example.com', '{"full_name": "Owner A"}'),
+  ('22222222-2222-2222-2222-222222222222', 'b@example.com', '{"full_name": "Owner B"}'),
+  ('33333333-3333-3333-3333-333333333333', 'm@example.com', '{"full_name": "Outlet Manager A"}'),
+  ('99999999-9999-9999-9999-999999999999', 'admin@reviewdot.in', '{"full_name": "Platform Admin"}');
 update profiles set is_platform_admin = true where id = '99999999-9999-9999-9999-999999999999';
 
 insert into organizations (id, name, slug, short_code) values

@@ -17,6 +17,32 @@ Next.js 15 (App Router) · React 18 · TypeScript · Tailwind v4 · Supabase · 
 - Tenant isolation lives in Postgres (`supabase/migrations/0002_rls.sql`), not
   in queries. `src/lib/permissions.ts` mirrors it for the UI only.
 
+## Auth and modes
+
+- `src/lib/app-mode.ts` decides how a deployment runs: **live** (Supabase
+  configured, auth enforced), **demo** (`NEXT_PUBLIC_DEMO_MODE=1`, seeded data,
+  no accounts), **unconfigured** (refuses to render the dashboard). A *missing*
+  variable can only move towards refusing — never towards an open dashboard —
+  and `live` always beats a stray demo flag. Don't add a fallback that reverses
+  this.
+- `NEXT_PUBLIC_*` is inlined at build time, so demo mode must be set for the
+  **build**, not just `next start`. Playwright's `webServer` does both.
+- Two server clients, and the difference is the whole point:
+  `serverClient()` carries the user's JWT so RLS applies — use it for anything a
+  signed-in user does; `serviceClient()` bypasses RLS and is for the anonymous
+  scan path (`/r/{code}`) and background jobs only.
+- `middleware.ts` gates `/app/*` and `/onboarding`. The path rules live in
+  `src/lib/routes.ts` so they can be unit-tested; `/r/{code}` stays public
+  because customers scanning a code have no account.
+- Authorize on `auth.getUser()`, never `getSession()` — the latter only decodes
+  a cookie the client can write.
+- `profiles` is filled by an `on auth.users` trigger and onboarding goes through
+  `app_create_organization()` (both in `0004_auth.sql`). `organizations` has no
+  insert policy on purpose; that function is the only way in.
+- Dashboard routes are `force-dynamic`. They render per user, and their figures
+  are relative to today — prerendered HTML stops matching the client the moment
+  the date rolls over, which makes React discard the whole server tree.
+
 ## Deploy pipeline
 
 Live site: **reviewdot.in**, hosted on Hostinger as a **Node.js app deployment** (hPanel → Websites →
@@ -78,5 +104,5 @@ npm run lint
 npm test           # Vitest
 npm run test:e2e   # Playwright (builds and starts the app itself)
 npm run db:migrate # apply supabase/migrations against $DATABASE_URL
-npm run db:test    # run the tenant isolation suite
+npm run db:test    # tenant isolation suite (23 checks) + auth suite (29 checks)
 ```

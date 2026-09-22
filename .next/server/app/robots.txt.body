@@ -1,9 +1,0 @@
-User-Agent: *
-Allow: /
-Disallow: /app/
-Disallow: /r/
-Disallow: /api/
-Disallow: /login
-Disallow: /admin/
-
-Sitemap: https://reviewdot.in/sitemap.xml

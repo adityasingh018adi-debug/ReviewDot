@@ -1,6 +1,7 @@
 'use server'
 
-import { isSupabaseConfigured, serviceClient } from '@/services/supabase'
+import { isSupabaseConfigured } from '@/services/supabase'
+import { serviceClient } from '@/services/supabase.server'
 import type { ScanContext } from '@/services/scan-context'
 
 /**

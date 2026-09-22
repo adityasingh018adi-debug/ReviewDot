@@ -4,11 +4,20 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
+import { SessionProvider, type UiSession } from './SessionProvider'
+import { SampleDataBanner } from './SampleDataBanner'
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+export function AppLayout({
+  session,
+  children,
+}: {
+  session: UiSession
+  children: React.ReactNode
+}) {
   const [navOpen, setNavOpen] = useState(false)
 
   return (
+    <SessionProvider value={session}>
     <div className="flex min-h-screen bg-canvas">
       <aside className="hidden w-64 shrink-0 lg:block">
         <div className="sticky top-0 h-screen">
@@ -41,8 +50,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenNav={() => setNavOpen(true)} />
+        {session.mode === 'live' ? <SampleDataBanner /> : null}
         <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
       </div>
     </div>
+    </SessionProvider>
   )
 }

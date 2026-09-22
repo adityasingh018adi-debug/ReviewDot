@@ -1,39 +1,40 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { appMode, isDemo, isLive, type AppMode } from '@/lib/app-mode'
 
 /**
- * Supabase clients.
+ * Supabase, browser side.
  *
- * Two, deliberately:
- *   browserClient  anon key, subject to row level security
- *   serviceClient  service role, bypasses RLS — server code only
+ * This module is reachable from client components, so it holds the anon key and
+ * nothing else. Every request it makes carries the signed-in user's JWT, which
+ * means row level security applies to all of it — that is the point.
  *
- * `serviceClient()` throws if called where a browser bundle could reach it, so
- * a stray import cannot leak the key into client JavaScript.
+ * The service-role client lives in supabase.server.ts, which a client component
+ * cannot import without the build failing.
  */
 
 export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 
-/** Whether a real database is wired up; false runs the app on demo data. */
+export { appMode, isDemo, isLive }
+export type { AppMode }
+
+/** Whether a real database is wired up. */
 export function isSupabaseConfigured(): boolean {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
 }
 
 let browser: SupabaseClient | null = null
 
+/**
+ * The client a browser uses. Sessions live in cookies rather than localStorage
+ * so the server can read them too — without that, middleware and server
+ * components cannot tell who is signed in.
+ */
 export function browserClient(): SupabaseClient {
-  if (!isSupabaseConfigured()) throw new Error('Supabase is not configured')
-  browser ??= createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true },
-  })
-  return browser
-}
-
-export function serviceClient(): SupabaseClient {
-  if (typeof window !== 'undefined') {
-    throw new Error('serviceClient() is server-only — it must never run in the browser')
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured — browserClient() is unavailable in this mode')
   }
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!SUPABASE_URL || !key) throw new Error('Supabase service credentials are not configured')
-  return createClient(SUPABASE_URL, key, { auth: { persistSession: false } })
+  browser ??= createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  return browser
 }

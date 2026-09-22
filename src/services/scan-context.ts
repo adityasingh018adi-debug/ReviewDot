@@ -1,5 +1,6 @@
 import { business, demoQR, outletById, productById, products, qrCodes } from '@/lib/data'
-import { isSupabaseConfigured, serviceClient } from './supabase'
+import { isSupabaseConfigured } from './supabase'
+import { serviceClient } from './supabase.server'
 import { destinationsFrom } from './review-destination'
 import type { Destination } from './types'
 

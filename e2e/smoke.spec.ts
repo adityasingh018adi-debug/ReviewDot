@@ -165,3 +165,48 @@ test('unknown routes show the 404 page', async ({ page }) => {
   await page.goto('/nowhere')
   await expect(page.getByText('404')).toBeVisible()
 })
+
+test.describe('authentication', () => {
+  test('the sign-in screen offers the real ways in', async ({ page }) => {
+    await page.goto('/login')
+    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
+    await expect(page.getByLabel('Work email')).toBeVisible()
+    await expect(page.getByLabel('Password')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Create an account' })).toBeVisible()
+  })
+
+  test('password reset screens are reachable and never 404', async ({ page }) => {
+    const forgot = await page.goto('/forgot-password')
+    expect(forgot?.status()).toBe(200)
+    await expect(page.getByRole('heading', { name: 'Reset your password' })).toBeVisible()
+
+    const reset = await page.goto('/reset-password')
+    expect(reset?.status()).toBe(200)
+    await expect(page.getByRole('heading', { name: 'Choose a new password' })).toBeVisible()
+  })
+
+  test('the account menu shows who is signed in', async ({ page }) => {
+    await page.goto('/app')
+    await page.getByRole('button', { name: /Ritika/ }).click()
+    await expect(page.getByRole('menu')).toBeVisible()
+    await expect(page.getByText('ritika@loveandlatte.in')).toBeVisible()
+  })
+
+  test('every sidebar link resolves — no dead navigation', async ({ page }) => {
+    await page.goto('/app')
+    const hrefs = await page
+      .locator('nav a[href^="/app"]')
+      .evaluateAll((links) => links.map((link) => link.getAttribute('href') ?? ''))
+    expect(hrefs.length).toBeGreaterThan(5)
+    for (const href of hrefs) {
+      const response = await page.request.get(href)
+      expect(response.status(), `${href} should not be a dead link`).toBe(200)
+    }
+  })
+
+  test('onboarding is skipped when there is no account to onboard', async ({ page }) => {
+    // demo mode already has a workspace, so /onboarding sends you to the dashboard
+    await page.goto('/onboarding')
+    await expect(page).toHaveURL(/\/app$/)
+  })
+})
