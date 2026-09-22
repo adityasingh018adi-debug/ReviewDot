@@ -5,10 +5,33 @@ import { cookies } from "next/headers";
 import { generateAIReply, type ReplyTone, type ReplyLanguage } from "@/lib/claude";
 import { prisma } from "@/lib/prisma";
 import { PLANS } from "@/lib/razorpay";
+import { isDemoMode } from "@/lib/demo-mode";
+import { rateLimit } from "@/lib/rate-limit";
 
 // POST /api/replies/generate
 // Body: { reviewId, tone?, language?, scheduleDelayMs? }
 export async function POST(request: NextRequest) {
+  // Rate limit: 30 AI requests per minute per IP
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { ok } = rateLimit(ip, 30, 60_000);
+  if (!ok) {
+    return NextResponse.json({ error: "Too many requests. Slow down a little." }, { status: 429 });
+  }
+
+  // Demo mode: return a canned AI reply without hitting DB or Claude
+  if (isDemoMode()) {
+    const body = await request.json().catch(() => ({}));
+    const tone = (body.tone as string) ?? "friendly";
+    const language = (body.language as string) ?? "en";
+    await new Promise(r => setTimeout(r, 900));
+    return NextResponse.json({
+      reply: "Thank you so much for your wonderful feedback! We truly appreciate you taking the time to share your experience with us. Your kind words mean the world to our team, and we look forward to welcoming you back soon! 🙏",
+      scheduledAt: null,
+      tone,
+      language,
+    });
+  }
+
   const supabase = createRouteHandlerClient({ cookies });
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {

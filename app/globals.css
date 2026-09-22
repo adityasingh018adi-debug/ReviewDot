@@ -283,6 +283,88 @@ html {
   background-clip: text;
 }
 
+/* ─── Dark dashboard page overrides ──────────────────────────────────────────── */
+/* Applied to every inner dashboard page via .dashboard-main without touching each component */
+
+.dark .dashboard-main .bg-gray-50  { background-color: #080C14; }
+.dark .dashboard-main .bg-white    { background-color: #0D1117; }
+.dark .dashboard-main .bg-gray-100 { background-color: #0E1628; }
+
+/* Borders */
+.dark .dashboard-main .border-gray-50,
+.dark .dashboard-main .border-gray-100,
+.dark .dashboard-main .border-gray-200 { border-color: #1A2035; }
+.dark .dashboard-main .divide-gray-50 > * + *,
+.dark .dashboard-main .divide-y       > * + * { border-color: #1A2035; }
+
+/* Text */
+.dark .dashboard-main .text-gray-900 { color: #E4E8F7; }
+.dark .dashboard-main .text-gray-800 { color: #C8D0E7; }
+.dark .dashboard-main .text-gray-700 { color: #B0BBDB; }
+.dark .dashboard-main .text-gray-600 { color: #8892B0; }
+.dark .dashboard-main .text-gray-500 { color: #6A7490; }
+.dark .dashboard-main .text-gray-400 { color: #5D6590; }
+
+/* Hover states */
+.dark .dashboard-main .hover\:bg-gray-50:hover  { background-color: #0D1520; }
+.dark .dashboard-main .hover\:bg-gray-100:hover { background-color: #141D2E; }
+
+/* Soft-tinted badge backgrounds (keep colour but dim to 10% opacity) */
+.dark .dashboard-main .bg-emerald-50  { background-color: rgba(34, 197,  94, 0.10); }
+.dark .dashboard-main .bg-amber-50    { background-color: rgba(245,158,  11, 0.10); }
+.dark .dashboard-main .bg-violet-50   { background-color: rgba(123, 92, 255, 0.10); }
+.dark .dashboard-main .bg-purple-50   { background-color: rgba(168, 85, 247, 0.10); }
+.dark .dashboard-main .bg-rose-50,
+.dark .dashboard-main .bg-red-50      { background-color: rgba(239, 68,  68, 0.10); }
+.dark .dashboard-main .bg-blue-50     { background-color: rgba( 59,130, 246, 0.10); }
+.dark .dashboard-main .bg-indigo-50   { background-color: rgba( 99,102, 241, 0.10); }
+.dark .dashboard-main .bg-orange-50   { background-color: rgba(249,115,  22, 0.10); }
+.dark .dashboard-main .bg-pink-50     { background-color: rgba(236, 72, 153, 0.10); }
+.dark .dashboard-main .bg-teal-50     { background-color: rgba( 20,184, 166, 0.10); }
+.dark .dashboard-main .bg-green-50    { background-color: rgba( 34,197,  94, 0.10); }
+.dark .dashboard-main .bg-cyan-50     { background-color: rgba(  6,182, 212, 0.10); }
+.dark .dashboard-main .bg-sky-50      { background-color: rgba( 14,165, 233, 0.10); }
+
+/* Lighten badge text colours for dark bg */
+.dark .dashboard-main .text-emerald-700 { color: #34d399; }
+.dark .dashboard-main .text-amber-700   { color: #fbbf24; }
+.dark .dashboard-main .text-orange-700  { color: #fb923c; }
+.dark .dashboard-main .text-rose-700    { color: #f87171; }
+.dark .dashboard-main .text-red-700     { color: #f87171; }
+.dark .dashboard-main .text-blue-700    { color: #60a5fa; }
+.dark .dashboard-main .text-indigo-700  { color: #a5b4fc; }
+.dark .dashboard-main .text-violet-700  { color: #a78bfa; }
+.dark .dashboard-main .text-purple-700  { color: #c084fc; }
+
+/* Badge borders */
+.dark .dashboard-main .border-emerald-200 { border-color: rgba(34, 197,  94, 0.25); }
+.dark .dashboard-main .border-amber-200   { border-color: rgba(245,158,  11, 0.25); }
+.dark .dashboard-main .border-orange-200  { border-color: rgba(249,115,  22, 0.25); }
+.dark .dashboard-main .border-violet-200  { border-color: rgba(139, 92, 246, 0.25); }
+.dark .dashboard-main .border-blue-200    { border-color: rgba( 59,130, 246, 0.25); }
+.dark .dashboard-main .border-indigo-200  { border-color: rgba( 99,102, 241, 0.25); }
+.dark .dashboard-main .border-rose-200,
+.dark .dashboard-main .border-red-200     { border-color: rgba(239, 68,  68, 0.25); }
+
+/* Inputs & selects */
+.dark .dashboard-main input:not([type="checkbox"]):not([type="radio"]),
+.dark .dashboard-main select,
+.dark .dashboard-main textarea {
+  background-color: #060818;
+  border-color: #1E2540;
+  color: #C8D0E7;
+  color-scheme: dark;
+}
+.dark .dashboard-main input::placeholder,
+.dark .dashboard-main textarea::placeholder { color: #5D6590; }
+
+/* Table */
+.dark .dashboard-main table { color: #B0BBDB; }
+.dark .dashboard-main thead tr { background-color: transparent; }
+.dark .dashboard-main tbody tr:hover { background-color: #0D1520 !important; }
+.dark .dashboard-main .shadow-sm,
+.dark .dashboard-main .shadow-md { box-shadow: 0 1px 8px rgba(0,0,0,0.5); }
+
 /* ─── Scrollbar ──────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { @apply bg-transparent; }

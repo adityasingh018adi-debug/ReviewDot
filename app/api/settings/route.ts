@@ -3,10 +3,16 @@ import type { NextRequest } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { isDemoMode } from "@/lib/demo-mode";
 
 // PATCH /api/settings
 // Updates business profile and alert preferences
 export async function PATCH(request: NextRequest) {
+  if (isDemoMode()) {
+    await new Promise(r => setTimeout(r, 500));
+    return NextResponse.json({ success: true });
+  }
+
   const supabase = createRouteHandlerClient({ cookies });
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {

@@ -6,11 +6,18 @@ import { prisma } from "@/lib/prisma";
 import { fetchReviews, refreshAccessToken, starRatingToNumber } from "@/lib/google";
 import { generateAIReply } from "@/lib/claude";
 import { sendNegativeReviewAlert } from "@/lib/twilio";
+import { isDemoMode } from "@/lib/demo-mode";
 
 // POST /api/reviews/sync
 // Pulls latest reviews from Google Business Profile and generates AI replies
 // Called manually from the dashboard or by Vercel Cron
 export async function POST(request: NextRequest) {
+  // Demo mode: nothing to sync, return mock response
+  if (isDemoMode()) {
+    await new Promise(r => setTimeout(r, 800));
+    return NextResponse.json({ synced: 0, newReviews: 0 });
+  }
+
   // For cron calls, verify the Authorization header
   const authHeader = request.headers.get("authorization");
   const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;

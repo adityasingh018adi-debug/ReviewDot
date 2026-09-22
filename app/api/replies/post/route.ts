@@ -4,11 +4,18 @@ import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { postReviewReply, refreshAccessToken } from "@/lib/google";
+import { isDemoMode } from "@/lib/demo-mode";
 
 // POST /api/replies/post
 // Body: { reviewId: string, replyText: string }
 // Posts the final reply to Google Business Profile
 export async function POST(request: NextRequest) {
+  // Demo mode: simulate posting without real Google credentials
+  if (isDemoMode()) {
+    await new Promise(r => setTimeout(r, 700));
+    return NextResponse.json({ success: true });
+  }
+
   const supabase = createRouteHandlerClient({ cookies });
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
