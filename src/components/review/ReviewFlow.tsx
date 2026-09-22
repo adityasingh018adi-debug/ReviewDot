@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowRight, Check, Copy, Loader2, Pencil, RefreshCw, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -11,6 +11,13 @@ import { useCopy } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
 import type { ScanContext } from '@/services/scan-context'
 import type { Destination } from '@/services/types'
+import {
+  approveDraft,
+  completeSession,
+  recordDestinationClick,
+  saveDraft,
+  submitFeedback,
+} from '@/app-actions/feedback'
 
 /**
  * The customer journey: rate → what stood out → their words → AI draft →
@@ -30,17 +37,23 @@ const STEP_ORDER: FlowStep[] = ['rate', 'detail', 'draft', 'share', 'done']
 
 export function ReviewFlow({
   context,
+  publicId,
+  sessionId = null,
   initialStep = 'rate',
   initialRating = 0,
   compact = false,
-  onSubmitFeedback,
 }: {
   context: ScanContext
+  /**
+   * The scanned code. Its presence is what turns persistence on: the landing
+   * page renders this same flow as a mockup and passes nothing, so no row is
+   * written for a visitor playing with the demo.
+   */
+  publicId?: string
+  sessionId?: string | null
   initialStep?: FlowStep
   initialRating?: number
   compact?: boolean
-  /** Persists the feedback; the flow continues even if this fails. */
-  onSubmitFeedback?: (input: { rating: number; tags: string[]; comment: string }) => Promise<void>
 }) {
   const [step, setStep] = useState<FlowStep>(initialStep)
   const [rating, setRating] = useState(initialRating)
@@ -52,6 +65,11 @@ export function ReviewFlow({
   const [editing, setEditing] = useState(false)
   const [chosen, setChosen] = useState<Destination | null>(null)
   const { copied, copy } = useCopy()
+
+  // Ids the journey accumulates. Refs rather than state: nothing renders from
+  // them, and a re-render must never lose the link between the steps.
+  const feedbackId = useRef<string | null>(null)
+  const draftId = useRef<string | null>(null)
 
   const positive = rating >= 4
   const chips = positive ? POSITIVE_CHIPS : IMPROVE_CHIPS
@@ -65,7 +83,18 @@ export function ReviewFlow({
     setDraftError(null)
     setStep('draft')
 
-    void onSubmitFeedback?.({ rating, tags, comment }).catch(() => {})
+    // The feedback write and the model call overlap: the customer waits for the
+    // slower of the two rather than for both in turn. The feedback is what
+    // actually matters, so it is started first and never blocks on the draft.
+    const feedbackWrite =
+      publicId && !feedbackId.current
+        ? submitFeedback(publicId, { rating, tags, comment, sessionId }).catch(() => ({
+            feedbackId: null,
+          }))
+        : Promise.resolve({ feedbackId: feedbackId.current })
+
+    let text = comment
+    let model: string | null = null
 
     try {
       const response = await fetch('/api/ai/review', {
@@ -81,8 +110,10 @@ export function ReviewFlow({
         }),
       })
       if (!response.ok) throw new Error(`Draft failed (${response.status})`)
-      const data = (await response.json()) as { text: string }
-      setDraft(data.text)
+      const data = (await response.json()) as { text: string; model?: string }
+      text = data.text
+      model = data.model ?? null
+      setDraft(text)
     } catch {
       // the customer's own words are always a valid review; never block on the model
       setDraft(comment)
@@ -90,6 +121,50 @@ export function ReviewFlow({
     } finally {
       setDrafting(false)
     }
+
+    const resolved = await feedbackWrite
+    feedbackId.current = resolved.feedbackId ?? feedbackId.current
+
+    if (publicId && feedbackId.current) {
+      // A rewrite stores a second draft, so the business can see the model was
+      // asked twice rather than only what the customer settled on.
+      const saved = await saveDraft(publicId, {
+        feedbackId: feedbackId.current,
+        draftText: text,
+        model,
+      }).catch(() => ({ draftId: null }))
+      draftId.current = saved.draftId ?? draftId.current
+    }
+  }
+
+  /** The customer accepted the wording, edited or not. */
+  const acceptDraft = () => {
+    if (publicId && draftId.current) {
+      void approveDraft(publicId, { draftId: draftId.current, finalText: draft }).catch(() => {})
+    }
+    setStep('share')
+  }
+
+  const chooseDestination = (destination: Destination) => {
+    void copy(draft)
+    setChosen(destination)
+    setStep('done')
+    if (publicId) {
+      void recordDestinationClick(publicId, {
+        feedbackId: feedbackId.current,
+        draftId: draftId.current,
+        sessionId,
+        kind: destination.kind,
+        url: destination.url,
+      }).catch(() => {})
+    }
+    window.open(destination.url, '_blank', 'noopener,noreferrer')
+  }
+
+  /** Keeping it private is a complete journey too, and is recorded as one. */
+  const keepPrivate = () => {
+    setStep('done')
+    if (publicId) void completeSession(publicId, sessionId).catch(() => {})
   }
 
   const heading = compact ? 'text-[17px]' : 'text-xl'
@@ -227,7 +302,7 @@ export function ReviewFlow({
               ) : null}
 
               <div className="mt-auto pt-6">
-                <Button className="w-full" disabled={drafting || !draft.trim()} onClick={() => setStep('share')}>
+                <Button className="w-full" disabled={drafting || !draft.trim()} onClick={acceptDraft}>
                   Use This Review <ArrowRight size={16} />
                 </Button>
               </div>
@@ -248,18 +323,13 @@ export function ReviewFlow({
                     key={destination.kind}
                     variant={destination.kind === 'google' ? 'primary' : 'secondary'}
                     className="w-full"
-                    onClick={() => {
-                      void copy(draft)
-                      setChosen(destination)
-                      setStep('done')
-                      window.open(destination.url, '_blank', 'noopener,noreferrer')
-                    }}
+                    onClick={() => chooseDestination(destination)}
                   >
                     {destination.kind === 'google' ? <GoogleGlyph size={16} /> : null}
                     Post on {destination.label}
                   </Button>
                 ))}
-                <Button variant="ghost" className="w-full" onClick={() => setStep('done')}>
+                <Button variant="ghost" className="w-full" onClick={keepPrivate}>
                   Keep it private
                 </Button>
               </div>

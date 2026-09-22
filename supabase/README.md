@@ -13,6 +13,7 @@ migrate.sh                   the runner: applies each migration once, tracked
 tests/rls_test.sql           isolation tests; every check raises on failure
 tests/auth_test.sql          signup trigger and onboarding
 tests/policy_test.sql        roles, response scope, triage scope, erasure
+tests/flow_test.sql          the customer journey, end to end
 ```
 
 ## Applying
@@ -52,8 +53,9 @@ real Supabase project.
 npm run db:test    # runs every file in tests/, in order
 ```
 
-91 checks in total — 23 isolation, 29 auth, 39 policy. Every suite runs inside a
-transaction and rolls back, so they are safe against a development database.
+114 checks in total — 23 isolation, 29 auth, 39 policy, 23 flow. Every suite runs
+inside a transaction and rolls back, so they are safe against a development
+database.
 
 A clean run prints one `ok` line per check. Any failure aborts with `FAILED: …`.
 

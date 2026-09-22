@@ -210,3 +210,52 @@ test.describe('authentication', () => {
     await expect(page).toHaveURL(/\/app$/)
   })
 })
+
+test.describe('the recorded journey', () => {
+  test.use({ viewport: { width: 400, height: 880 } })
+
+  test('runs the whole flow without a single failed request or page error', async ({ page }) => {
+    const pageErrors: string[] = []
+    const failedRequests: string[] = []
+    page.on('pageerror', (error) => pageErrors.push(String(error)))
+    page.on('response', (response) => {
+      // the scan path fires server actions at every step; a 4xx/5xx from one of
+      // them is invisible to the customer and must not be invisible to us
+      if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`)
+    })
+
+    await fresh(page, '/r/demo')
+    await page.getByRole('radio', { name: '5 stars' }).click()
+    await page.getByRole('button', { name: 'Next' }).click()
+    await page.getByRole('textbox').fill('The flat white was excellent and the staff were lovely.')
+    await page.getByRole('button', { name: /Create My Review/ }).click()
+    await expect(page.getByRole('button', { name: /Use This Review/ })).toBeEnabled({ timeout: 20_000 })
+    await page.getByRole('button', { name: /Use This Review/ }).click()
+
+    await expect(page.getByRole('heading', { name: /Where would you like to post it/ })).toBeVisible()
+    await page.getByRole('button', { name: 'Keep it private' }).click()
+    await expect(page.getByRole('heading', { name: /Thank you/ })).toBeVisible()
+
+    expect(pageErrors, 'page errors during the journey').toEqual([])
+    expect(failedRequests, 'failed requests during the journey').toEqual([])
+  })
+
+  test('a rewrite does not restart the journey', async ({ page }) => {
+    await fresh(page, '/r/demo')
+    await page.getByRole('radio', { name: '4 stars' }).click()
+    await page.getByRole('button', { name: 'Next' }).click()
+    await page.getByRole('textbox').fill('Good coffee, the queue moved quickly.')
+    await page.getByRole('button', { name: /Create My Review/ }).click()
+    await expect(page.getByRole('button', { name: /Rewrite/ })).toBeEnabled({ timeout: 20_000 })
+
+    const first = await page.locator('blockquote').first().innerText()
+    await page.getByRole('button', { name: /Rewrite/ }).click()
+    await expect(page.getByRole('button', { name: /Use This Review/ })).toBeEnabled({ timeout: 20_000 })
+
+    // still on the draft step, with a draft in hand — the customer's own words
+    // are always a valid fallback, so this must never come back empty
+    const second = await page.locator('blockquote').first().innerText()
+    expect(second.length).toBeGreaterThan(10)
+    expect(first.length).toBeGreaterThan(10)
+  })
+})

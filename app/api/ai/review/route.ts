@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { clientIp, limiter } from '@/lib/rate-limit'
 import { LocalAIReviewService, groundingIssues } from '@/services/ai-review'
 import { ClaudeReviewService } from '@/services/ai-review.server'
 import type { ReviewDraftInput } from '@/services/types'
@@ -15,19 +16,6 @@ export const runtime = 'nodejs'
 
 const MAX_COMMENT = 2000
 const MAX_TAGS = 12
-
-/** Crude per-instance limiter — enough to blunt scripted abuse of the endpoint. */
-const WINDOW_MS = 60_000
-const MAX_PER_WINDOW = 12
-const hits = new Map<string, number[]>()
-
-function rateLimited(key: string): boolean {
-  const now = Date.now()
-  const recent = (hits.get(key) ?? []).filter((time) => now - time < WINDOW_MS)
-  recent.push(now)
-  hits.set(key, recent)
-  return recent.length > MAX_PER_WINDOW
-}
 
 function parse(body: unknown): ReviewDraftInput | null {
   if (!body || typeof body !== 'object') return null
@@ -49,10 +37,17 @@ function parse(body: unknown): ReviewDraftInput | null {
   }
 }
 
+/** Shared with the scan-path actions, and unlike the map this replaces, it prunes. */
+const LIMIT = { max: 12, windowMs: 60_000 }
+
 export async function POST(request: Request) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-  if (rateLimited(ip)) {
-    return NextResponse.json({ error: 'Too many requests, please retry shortly.' }, { status: 429 })
+  const ip = clientIp(request.headers)
+  const verdict = limiter.check(`ai-review:${ip}`, LIMIT.max, LIMIT.windowMs)
+  if (!verdict.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests, please retry shortly.' },
+      { status: 429, headers: { 'retry-after': String(Math.ceil(verdict.retryAfterMs / 1000)) } },
+    )
   }
 
   const input = parse(await request.json().catch(() => null))

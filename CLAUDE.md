@@ -51,6 +51,30 @@ Next.js 15 (App Router) · React 18 · TypeScript · Tailwind v4 · Supabase · 
   `Math.random()`, and never derived from anything readable. The printed
   `RD-LL-TH-T04` reference is a label only and is never used for lookups.
 
+## The customer flow
+
+- `src/app-actions/feedback.ts` records the whole journey: scan → session →
+  feedback → draft → approval → destination click. Every action takes the
+  `public_id` from the URL and **re-resolves the campaign server-side**; it never
+  accepts an organization or outlet from the caller. Ids the client carries
+  between steps are each checked against that campaign before use.
+- `source_text` on a draft is read from the feedback row, never from the
+  payload — it is the provenance of the whole thing. `edited_by_customer` is
+  derived by comparing against the stored draft, for the same reason.
+- `destination_url` on a review event comes from the outlet's configured
+  destinations, not from the request.
+- Writes in this path never break the customer: they fail quietly, but through
+  `attempt()` in `src/lib/observability.ts`, which records one line of
+  structured JSON first. Ids and counts only — never a comment, name, email or
+  phone, which must not outlive the row in a log file.
+- `visitor_hash` is `HMAC(VISITOR_SALT + UTC date, ip + user agent)`. The
+  address is an input, never stored, and the daily rotation stops a device being
+  followed across days. Without `VISITOR_SALT` it stays null rather than being
+  faked.
+- Rate limits are per process and prune (`src/lib/rate-limit.ts`). The scan
+  limit is deliberately generous — a whole café shares one address — and when it
+  trips the page still renders; only the telemetry write is dropped.
+
 ## Deploy pipeline
 
 Live site: **reviewdot.in**, hosted on Hostinger as a **Node.js app deployment** (hPanel → Websites →
@@ -112,5 +136,5 @@ npm run lint
 npm test           # Vitest
 npm run test:e2e   # Playwright (builds and starts the app itself)
 npm run db:migrate # apply outstanding migrations (tracked, once each)
-npm run db:test    # 91 database checks: isolation, auth, policy
+npm run db:test    # 114 database checks: isolation, auth, policy, flow
 ```

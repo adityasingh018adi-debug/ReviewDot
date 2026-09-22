@@ -4,7 +4,7 @@ import { ArrowLeft, QrCode } from 'lucide-react'
 import { ReviewFlow } from '@/components/review/ReviewFlow'
 import { LogoMark } from '@/components/ui/Logo'
 import { resolveScan } from '@/services/scan-context'
-import { recordScan, submitFeedback } from '@/app-actions/feedback'
+import { recordScan } from '@/app-actions/feedback'
 
 /**
  * The scan destination. Server-rendered so the first paint is immediate on a
@@ -57,7 +57,10 @@ export default async function ScanPage({ params }: { params: Promise<{ code: str
   }
 
   const { context } = lookup
-  await recordScan(context)
+
+  // Opens the journey: one qr_scans row and one customer_sessions row, so the
+  // feedback, draft and destination click that follow can be tied together.
+  const { sessionId } = await recordScan(code)
 
   return (
     <div className="flex h-[100dvh] flex-col bg-raised">
@@ -71,7 +74,7 @@ export default async function ScanPage({ params }: { params: Promise<{ code: str
           </span>
         </div>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-3xl border border-b-0 border-line bg-surface shadow-card">
-          <ReviewFlow context={context} onSubmitFeedback={submitFeedback.bind(null, context)} />
+          <ReviewFlow context={context} publicId={code} sessionId={sessionId} />
         </div>
       </div>
     </div>
