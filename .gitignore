@@ -11,3 +11,5 @@ playwright-report
 dist-preview
 reviewdot-hostinger.zip
 reviewdot-hostinger-next.zip
+.env
+.env.local
