@@ -42,6 +42,14 @@ Next.js 15 (App Router) · React 18 · TypeScript · Tailwind v4 · Supabase · 
 - Dashboard routes are `force-dynamic`. They render per user, and their figures
   are relative to today — prerendered HTML stops matching the client the moment
   the date rolls over, which makes React discard the whole server tree.
+- Migrations are tracked in `schema_migrations` with a checksum. Never edit one
+  that has run — the runner will refuse it. Write a new one.
+- Row level security cannot restrict columns. Where a policy needs to allow
+  updating some fields and not others (feedback triage), that is a column
+  `GRANT`, not a policy.
+- Scan codes come from `generatePublicId()` — crypto-random, 10 chars. Never
+  `Math.random()`, and never derived from anything readable. The printed
+  `RD-LL-TH-T04` reference is a label only and is never used for lookups.
 
 ## Deploy pipeline
 
@@ -103,6 +111,6 @@ npm start          # next start
 npm run lint
 npm test           # Vitest
 npm run test:e2e   # Playwright (builds and starts the app itself)
-npm run db:migrate # apply supabase/migrations against $DATABASE_URL
-npm run db:test    # tenant isolation suite (23 checks) + auth suite (29 checks)
+npm run db:migrate # apply outstanding migrations (tracked, once each)
+npm run db:test    # 91 database checks: isolation, auth, policy
 ```

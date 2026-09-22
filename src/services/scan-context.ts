@@ -2,6 +2,7 @@ import { business, demoQR, outletById, productById, products, qrCodes } from '@/
 import { isSupabaseConfigured } from './supabase'
 import { serviceClient } from './supabase.server'
 import { destinationsFrom } from './review-destination'
+import { referenceCode, shortCodeFor } from '@/lib/qr-identity'
 import type { Destination } from './types'
 
 /**
@@ -55,7 +56,14 @@ function demoContext(code: string): ScanLookup {
     context: {
       campaignId: qr.id,
       publicId: qr.code,
-      referenceCode: `RD-LL-${outlet.name.slice(0, 2).toUpperCase()}-T12`,
+      // was hard-coded to -T12 regardless of where the code actually sat
+      referenceCode:
+        qr.reference ??
+        referenceCode({
+          orgShortCode: shortCodeFor(business.name),
+          outletShortCode: shortCodeFor(outlet.name),
+          placement: qr.location,
+        }),
       organizationId: business.id,
       organizationName: business.name,
       outletId: outlet.id,

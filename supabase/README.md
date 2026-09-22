@@ -8,8 +8,11 @@ migrations/0001_schema.sql   tables, indexes, triggers
 migrations/0002_rls.sql      row level security — where tenant isolation lives
 migrations/0003_plans.sql    plan catalogue and limits
 migrations/0004_auth.sql     auth.users → profiles, and onboarding
+migrations/0005_hardening.sql indexes, policy scope, erasure
+migrate.sh                   the runner: applies each migration once, tracked
 tests/rls_test.sql           isolation tests; every check raises on failure
 tests/auth_test.sql          signup trigger and onboarding
+tests/policy_test.sql        roles, response scope, triage scope, erasure
 ```
 
 ## Applying
@@ -20,10 +23,22 @@ With the Supabase CLI, against a linked project:
 supabase db push
 ```
 
-Or directly with psql, in order:
+Or with the runner, which applies each file once and records it:
 
 ```bash
-for f in supabase/migrations/*.sql; do psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"; done
+npm run db:migrate              # apply anything outstanding
+npm run db:migrate -- --status  # show what has run and what has not
+```
+
+Every migration runs inside its own transaction, so a failure leaves nothing
+behind. Applying twice is a no-op. Editing a migration that has already run is
+reported as an error rather than silently ignored — write a new one instead.
+
+**On a database that already has the schema** (applied by hand before the runner
+existed), record the current state once so the runner does not try to re-run it:
+
+```bash
+npm run db:migrate -- --baseline
 ```
 
 ## Testing isolation
@@ -37,8 +52,8 @@ real Supabase project.
 npm run db:test    # runs every file in tests/, in order
 ```
 
-23 isolation checks and 29 auth checks. Both suites run inside a transaction and
-roll back.
+91 checks in total — 23 isolation, 29 auth, 39 policy. Every suite runs inside a
+transaction and rolls back, so they are safe against a development database.
 
 A clean run prints one `ok` line per check. Any failure aborts with `FAILED: …`.
 
@@ -87,3 +102,37 @@ Applying 0004 to a database whose `profiles` contain ids with no matching
 `auth.users` row will fail on the foreign key. Reconcile those rows rather than
 dropping the constraint — an unattached profile is one nobody can ever sign in
 as.
+
+## Hardening (0005)
+
+**Indexes.** `app_can_see_outlet()` filters `team_assignments where outlet_id = ?`
+and is evaluated per row on every feedback, campaign, scan and session read. The
+only index containing `outlet_id` was `unique(member_id, outlet_id)`, whose
+leading column is wrong for that lookup, so the hottest path in the whole
+security model was a sequential scan. That is fixed, along with every other
+foreign key that had no usable index — including the cascade paths from
+`outlets`, which otherwise scan each child table while holding a lock on it.
+
+On `qr_scans` and `analytics_events` the cascade index is a deliberate trade:
+one more index to maintain on the two highest-volume insert paths, so that
+deleting an outlet does not lock them for minutes. Worth revisiting when those
+tables are partitioned.
+
+**Response scope.** `review_responses` was the one outlet-scoped table without an
+`outlet_id`, so its policy fell back to plain organization membership — letting a
+STAFF member edit and delete replies for outlets they cannot even see. It now
+carries `outlet_id` like everything else, and the policies split into insert
+(as yourself, in a visible outlet), update and delete (your own reply, or any
+reply if you are an org admin).
+
+**Triage scope.** The `feedback_update` policy was commented "status, assignment
+and notes", but row level security cannot restrict columns, so it permitted
+rewriting the customer's own comment and rating. Column privileges express this
+properly: `authenticated` may now update only `status` and `assigned_to`.
+`service_role` is untouched, so server-side jobs still write `sentiment`.
+
+**Erasure.** `app_erase_feedback_contact()` nulls the contact fields and stamps
+`contact_erased_at`, leaving the rating and comment intact — honouring a request
+should not silently rewrite the business's history. Outright deletion is
+available to org admins for the cases erasure does not cover; the cascades take
+the drafts, mentions and replies with it.

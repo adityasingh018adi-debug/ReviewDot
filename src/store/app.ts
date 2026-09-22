@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { qrCodes as baseQRCodes, business, scanEvents, entries as baseEntries } from '@/lib/data'
+import { qrCodes as baseQRCodes, business, outletById, scanEvents, entries as baseEntries } from '@/lib/data'
 import type { ScanEvent } from '@/lib/data'
 import type { DataSet, RangeKey, Scope } from '@/lib/metrics'
 import { resolveRange } from '@/lib/metrics'
 import type { Destination, Entry, FeedbackStatus, QRCodeRecord, QRStatus, QRType } from '@/lib/types'
+import { generatePublicId, referenceCode, shortCodeFor } from '@/lib/qr-identity'
 
 export type QRDraft = {
   label: string
@@ -44,7 +45,13 @@ type AppState = {
   resetDemo: () => void
 }
 
-const shortCode = () => Math.random().toString(36).slice(2, 8)
+/**
+ * Ids for rows created in this browser. Math.random() used to generate the scan
+ * code itself, which made every QR URL enumerable — six characters of
+ * non-cryptographic randomness. generatePublicId() is the tested implementation
+ * that was already in the codebase and unused.
+ */
+const localId = () => generatePublicId(12)
 
 export const useApp = create<AppState>()(
   persist(
@@ -65,10 +72,17 @@ export const useApp = create<AppState>()(
         set({ rangeKey, ...(customRange ? { customRange } : {}) }),
 
       createQR: (draft) => {
-        const code = shortCode()
+        const code = generatePublicId()
+        const outlet = outletById(draft.outletId)
         const record: QRCodeRecord = {
           id: `qr-${code}`,
           code,
+          // the human-readable label printed on the card, e.g. RD-LL-TH-T04
+          reference: referenceCode({
+            orgShortCode: shortCodeFor(business.name),
+            outletShortCode: shortCodeFor(outlet?.name ?? ''),
+            placement: draft.location,
+          }),
           businessId: business.id,
           status: 'active',
           createdAt: new Date().toISOString(),
@@ -85,7 +99,7 @@ export const useApp = create<AppState>()(
         set({
           liveScans: [
             {
-              id: `scn-live-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              id: `scn-live-${Date.now()}-${localId()}`,
               createdAt: new Date().toISOString(),
               outletId,
               qrId,

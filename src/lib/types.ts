@@ -38,7 +38,10 @@ export type Product = {
 
 export type QRCodeRecord = {
   id: string
+  /** The unguessable /r/{code} segment. Never derived from anything readable. */
   code: string
+  /** Human-readable label printed on collateral, e.g. RD-LL-TH-T04. Never used for lookups. */
+  reference?: string
   label: string
   type: QRType
   businessId: string

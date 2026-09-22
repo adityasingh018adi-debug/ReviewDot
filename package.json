@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "ReviewDot — QR-powered customer experience and review intelligence platform",
+  "description": "ReviewDot \u2014 QR-powered customer experience and review intelligence platform",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -14,7 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "db:migrate": "for f in supabase/migrations/*.sql; do psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f \"$f\"; done",
+    "db:migrate": "bash supabase/migrate.sh",
     "db:test": "for f in supabase/tests/*.sql; do psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f \"$f\"; done"
   },
   "dependencies": {
