@@ -11,12 +11,19 @@ Vite build in `dist/` with an SPA fallback.
 
 - The CI `deploy` job FTP-uploads `dist/` to `public_html/`. **That path does not feed reviewdot.in**
   under the current hosting setup — a green deploy job is not proof the site changed.
-- To ship to the live site, build the deployment bundle and upload it in hPanel → Deployments
+- To ship to the live site, build a deployment bundle and upload it in hPanel → Deployments
   (or connect that deployment to this repo so it deploys on push):
 
 ```bash
-npm run build && npm run bundle    # writes reviewdot-hostinger.zip (dist/ + server.js + package.json)
+npm run build && npm run bundle:next   # Next.js wrapper — matches the site's Framework: Next.js setting
+npm run build && npm run bundle        # plain Node bundle — needs Framework: Other + output dir `dist`
 ```
+
+  The hosting deployment is configured as **Framework: Next.js**, and its build step fails with
+  "No output directory found after build" unless a `.next/` directory is produced. `bundle:next`
+  therefore wraps the Vite build in a real Next.js app: the build output is served from `public/`,
+  and rewrites point `/` and every unmatched path at the app shell. Prefer it unless the framework
+  setting in hPanel has been changed.
 
 - The **default branch** is `claude/premium-ai-review-saas-vy8lou`; the CI `deploy` job runs only there.
 - Feature work happens on `claude/amazing-rubin-enoruh`, then merges into the default branch.

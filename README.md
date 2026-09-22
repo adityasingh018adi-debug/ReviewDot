@@ -109,10 +109,16 @@ reviewdot.in runs on Hostinger as a Node.js app: `npm start` boots `server.js`, 
 static server that serves `dist/` with an SPA fallback and long-lived caching for hashed assets.
 
 ```bash
-npm run build && npm run bundle   # → reviewdot-hostinger.zip (dist/ + server.js + package.json)
+npm run build && npm run bundle:next   # → reviewdot-hostinger-next.zip (Next.js wrapper)
+npm run build && npm run bundle        # → reviewdot-hostinger.zip (Node server, output dir `dist`)
 ```
 
-Upload that bundle in hPanel → Websites → Deployments, or point the deployment at this repository so
+The hosting deployment is configured as Framework: Next.js, whose build step requires a `.next/`
+directory — `bundle:next` produces one by wrapping the same build in a real Next.js app that serves
+`public/` and rewrites every route to the app shell. Use the plain bundle only if the framework
+setting is changed to Other with output directory `dist`.
+
+Upload the bundle in hPanel → Websites → Deployments, or point the deployment at this repository so
 it ships on push. Pushing to the default branch (`claude/premium-ai-review-saas-vy8lou`) also runs CI
 and FTP-uploads `dist/` to `public_html/`, which is useful for static hosting but is not what the
 domain currently serves.

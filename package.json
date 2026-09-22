@@ -10,6 +10,7 @@
     "start": "node server.js",
     "build:preview": "vite build --config vite.preview.config.ts",
     "bundle": "node scripts/bundle.mjs",
+    "bundle:next": "node scripts/bundle-next.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write src e2e",
