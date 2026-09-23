@@ -22,7 +22,7 @@ export function Campaigns() {
         title="Campaigns"
         description="Group QR codes behind a campaign to see what a flyer, story or packaging insert actually produced."
         action={
-          <ButtonLink href="/app/qr" size="sm" variant="secondary">
+          <ButtonLink href="/app/campaigns" size="sm" variant="secondary">
             <QrCode size={15} /> Create campaign QR
           </ButtonLink>
         }

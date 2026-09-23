@@ -45,7 +45,7 @@ export function Dashboard() {
         description={`${scope.range.label} · ${scope.outletId === 'all' ? 'all outlets' : outletRows.find((o) => o.id === scope.outletId)?.name}`}
         action={
           <>
-            <ButtonLink href="/app/qr" variant="secondary" size="sm">
+            <ButtonLink href="/app/campaigns" variant="secondary" size="sm">
               <QrCode size={15} /> QR studio
             </ButtonLink>
             <ButtonLink href="/app/insights" size="sm">
@@ -220,7 +220,7 @@ export function Dashboard() {
           title="Latest activity"
           subtitle="Newest ratings across every QR code"
           action={
-            <Link href="/app/reviews" className="text-[13px] font-medium text-accent hover:underline">
+            <Link href="/app/inbox" className="text-[13px] font-medium text-accent hover:underline">
               All reviews
             </Link>
           }

@@ -192,16 +192,41 @@ test.describe('authentication', () => {
     await expect(page.getByText('ritika@loveandlatte.in')).toBeVisible()
   })
 
-  test('every sidebar link resolves — no dead navigation', async ({ page }) => {
-    await page.goto('/app')
-    const hrefs = await page
-      .locator('nav a[href^="/app"]')
-      .evaluateAll((links) => links.map((link) => link.getAttribute('href') ?? ''))
-    expect(hrefs.length).toBeGreaterThan(5)
-    for (const href of hrefs) {
-      const response = await page.request.get(href)
-      expect(response.status(), `${href} should not be a dead link`).toBe(200)
+  test('every internal link resolves — no dead navigation', async ({ page }) => {
+    // Every link on every dashboard page, not just the sidebar. A dead link in
+    // a card body is just as broken, and that is exactly where the two we had
+    // were hiding.
+    const pages = [
+      '/app',
+      '/app/inbox',
+      '/app/feedback',
+      '/app/outlets',
+      '/app/campaigns',
+      '/app/products',
+      '/app/analytics',
+      '/app/insights',
+      '/app/customers',
+      '/app/settings',
+    ]
+    const seen = new Set<string>()
+
+    for (const path of pages) {
+      const response = await page.goto(path)
+      expect(response?.status(), `${path} should render`).toBe(200)
+
+      const hrefs = await page
+        .locator('a[href^="/"]')
+        .evaluateAll((links) => links.map((link) => link.getAttribute('href') ?? ''))
+
+      for (const href of hrefs) {
+        if (!href || href.startsWith('//') || seen.has(href)) continue
+        seen.add(href)
+        const linked = await page.request.get(href)
+        expect(linked.status(), `${href} (linked from ${path}) should not be a dead link`).toBe(200)
+      }
     }
+
+    expect(seen.size).toBeGreaterThan(10)
   })
 
   test('onboarding is skipped when there is no account to onboard', async ({ page }) => {
