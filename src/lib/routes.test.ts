@@ -26,6 +26,13 @@ describe('isProtectedPath', () => {
       '/r/abc123',
       '/api/ai/review',
       '/robots.txt',
+      // gating this one would break every email confirmation, password reset
+      // and Google sign-in, because the code is exchanged for a session here —
+      // before there is a session to check
+      '/auth/callback',
+      // and this one is opened by someone who has no account yet
+      '/join/2f6c8a1b',
+      '/reset-password',
     ]) {
       expect(isProtectedPath(path), path).toBe(false)
     }

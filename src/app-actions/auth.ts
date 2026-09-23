@@ -74,10 +74,16 @@ export async function signInAction(form: FormData): Promise<AuthResult> {
   if (!email || !password) return { error: 'Enter your email and password.' }
 
   const supabase = await serverClient()
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
   // One message for a wrong password and an unknown address alike.
   if (error) return { error: 'Those details did not match an account.' }
+
+  // Credentials accepted is not the same as signed in. The session is what the
+  // cookie is written from, so redirecting to the dashboard without one lands
+  // the user on a page that will bounce them straight back here, looking for
+  // all the world like the password was wrong.
+  if (!data.session) return { error: 'Could not start a session. Please try again.' }
 
   revalidatePath('/', 'layout')
   redirect(safeNextPath(field(form, 'next')))

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
 import { Feedback } from '@/views/app/Feedback'
 import { FeedbackLive } from '@/views/app/FeedbackLive'
 import { dashboardContext } from '@/services/dashboard-context.server'
@@ -21,7 +20,6 @@ function filterFrom(params: Params): { key: string; filter: FeedbackFilter } {
 
 export default async function Page({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await dashboardContext()
-  if (!context) redirect('/login')
 
   if (context.mode !== 'live') return <Feedback />
 

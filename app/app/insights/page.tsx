@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
 import { Insights } from '@/views/app/Insights'
 import { InsightsLive } from '@/views/app/InsightsLive'
 import { dashboardContext } from '@/services/dashboard-context.server'
@@ -10,7 +9,6 @@ export const metadata: Metadata = { title: 'AI insights' }
 
 export default async function Page({ searchParams }: { searchParams: Promise<ScopeParams> }) {
   const context = await dashboardContext()
-  if (!context) redirect('/login')
   if (context.mode !== 'live') return <Insights />
 
   const scope = scopeFromParams(await searchParams)

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { ProductDetail } from '@/views/app/ProductDetail'
 import { Card, CardHeader } from '@/components/ui/Card'
@@ -21,7 +21,6 @@ export default async function Page({
   searchParams: Promise<ScopeParams>
 }) {
   const context = await dashboardContext()
-  if (!context) redirect('/login')
   if (context.mode !== 'live') return <ProductDetail />
 
   const { productId } = await params

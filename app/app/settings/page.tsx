@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
 import { Settings } from '@/views/app/Settings'
 import { SettingsLive } from '@/views/app/SettingsLive'
 import { dashboardContext } from '@/services/dashboard-context.server'
@@ -9,7 +8,6 @@ export const metadata: Metadata = { title: 'Settings' }
 
 export default async function Page() {
   const context = await dashboardContext()
-  if (!context) redirect('/login')
   if (context.mode !== 'live') return <Settings />
 
   const [organization, team, invites, workspace] = await Promise.all([

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
 import { Reviews } from '@/views/app/Reviews'
 import { InboxLive } from '@/views/app/InboxLive'
 import { dashboardContext } from '@/services/dashboard-context.server'
@@ -11,7 +10,6 @@ type Params = ScopeParams & { cursor?: string }
 
 export default async function Page({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await dashboardContext()
-  if (!context) redirect('/login')
   if (context.mode !== 'live') return <Reviews />
 
   const params = await searchParams

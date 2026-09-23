@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation'
 import { Dashboard } from '@/views/app/Dashboard'
 import { DashboardLive } from '@/views/app/DashboardLive'
 import { dashboardContext } from '@/services/dashboard-context.server'
@@ -6,7 +5,6 @@ import { scopeFromParams, type ScopeParams } from '@/services/scope'
 
 export default async function Page({ searchParams }: { searchParams: Promise<ScopeParams> }) {
   const context = await dashboardContext()
-  if (!context) redirect('/login')
 
   // Demo mode keeps the seeded view, which reproduces the product's reference
   // figures exactly. It goes away once every panel opposite is backed by a query.

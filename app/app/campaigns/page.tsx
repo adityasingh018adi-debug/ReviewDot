@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
 import { QRCodes } from '@/views/app/QRCodes'
 import { CampaignsLive } from '@/views/app/CampaignsLive'
 import { dashboardContext } from '@/services/dashboard-context.server'
@@ -9,7 +8,6 @@ export const metadata: Metadata = { title: 'QR campaigns' }
 
 export default async function Page({ searchParams }: { searchParams: Promise<ScopeParams> }) {
   const context = await dashboardContext()
-  if (!context) redirect('/login')
   if (context.mode !== 'live') return <QRCodes />
 
   const scope = scopeFromParams(await searchParams)

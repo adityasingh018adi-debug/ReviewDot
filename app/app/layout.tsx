@@ -66,7 +66,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   // The outlet picker needs real outlets, and only the ones this member can see
   // — which is app_can_see_outlet's job, not the picker's.
   const context = await dashboardContext()
-  const outlets = context ? await context.repo.outletOptions().catch(() => []) : []
+  const outlets = await context.repo.outletOptions().catch(() => [])
 
   const fullName = workspace.user.fullName?.trim() || workspace.user.email
   const session: UiSession = {

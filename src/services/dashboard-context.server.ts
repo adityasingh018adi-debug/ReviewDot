@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { appMode, type AppMode } from '@/lib/app-mode'
 import { getWorkspaceSession } from './auth.server'
 import { DemoDashboardRepo } from './dashboard.demo'
@@ -28,7 +29,23 @@ export type DashboardContext = {
   can: (permission: Permission) => boolean
 }
 
-export async function dashboardContext(): Promise<DashboardContext | null> {
+/**
+ * Resolves the dashboard for this request, or sends the caller where they
+ * actually need to go. Never returns null.
+ *
+ * It used to return null for two unrelated situations — nobody signed in, and
+ * signed in but not yet a member of any organization — and left each page to
+ * decide what that meant. Every page guessed `/login`, which is right for the
+ * first and wrong for the second: it bounces an authenticated user to the
+ * sign-in screen, where middleware sees their valid session and sends them
+ * straight back. The layout meanwhile redirects that same person to
+ * `/onboarding`, and because a layout and its page render concurrently, which
+ * answer won was a race. That is what made a working session look like it had
+ * been lost, intermittently and only for some accounts.
+ *
+ * Deciding here means there is one answer rather than thirteen.
+ */
+export async function dashboardContext(): Promise<DashboardContext> {
   const mode = appMode()
 
   if (mode !== 'live') {
@@ -43,9 +60,13 @@ export async function dashboardContext(): Promise<DashboardContext | null> {
   }
 
   const workspace = await getWorkspaceSession()
-  // The layout already redirects when either of these is missing; returning
-  // null rather than guessing keeps that decision in one place.
-  if (!workspace?.active) return null
+
+  // No session at all: sign in. This is the only route to /login from here.
+  if (!workspace) redirect('/login')
+
+  // Signed in, but with no organization yet — finish signing up. Sending this
+  // person to /login would be telling them to do something they have done.
+  if (!workspace.active) redirect('/onboarding')
 
   const role = workspace.active.role
   return {

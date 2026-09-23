@@ -42,6 +42,24 @@ export async function middleware(request: NextRequest) {
   // cookies onto it, and returning a different one would drop them.
   let response = NextResponse.next({ request })
 
+  /**
+   * Redirect, carrying the refreshed session with it.
+   *
+   * getUser() does not just read the token, it renews it, and Supabase rotates
+   * the refresh token when it does — the old one is spent the moment a new one
+   * is issued. Those new cookies are written onto `response`. A bare
+   * NextResponse.redirect() is a different response with no Set-Cookie on it,
+   * so the browser never receives the replacement and keeps replaying a token
+   * the auth server has already retired. The next refresh then fails and the
+   * user is silently signed out — one request later, or an hour later, which is
+   * why it looked intermittent.
+   */
+  const redirectTo = (url: URL) => {
+    const redirect = NextResponse.redirect(url)
+    for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie)
+    return redirect
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -70,7 +88,7 @@ export async function middleware(request: NextRequest) {
       login.search = ''
       // come back to where they were headed once they are signed in
       if (pathname !== '/app') login.searchParams.set('next', `${pathname}${search}`)
-      return NextResponse.redirect(login)
+      return redirectTo(login)
     }
     return response
   }
@@ -79,7 +97,7 @@ export async function middleware(request: NextRequest) {
     const app = request.nextUrl.clone()
     app.pathname = '/app'
     app.search = ''
-    return NextResponse.redirect(app)
+    return redirectTo(app)
   }
 
   return response

@@ -72,7 +72,13 @@ export class SupabaseAuthService implements AuthService {
       .eq('user_id', userId)
       .order('created_at', { ascending: true })
 
-    if (error || !data) return []
+    // A failed read is not the same fact as "belongs to nothing", and flattening
+    // the two is how a network blip became a sign-out: no memberships means no
+    // active organization, which sends a perfectly valid session off to
+    // onboarding to create a business it already has. Let it throw — an error
+    // boundary is a true statement, an empty list is not.
+    if (error) throw error
+    if (!data) return []
 
     const memberIds = data.map((row) => row.id as string)
     const assignments = memberIds.length

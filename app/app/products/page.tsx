@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
 import { Products } from '@/views/app/Products'
 import { ProductsLive } from '@/views/app/ProductsLive'
 import { dashboardContext } from '@/services/dashboard-context.server'
@@ -9,7 +8,6 @@ export const metadata: Metadata = { title: 'Products' }
 
 export default async function Page({ searchParams }: { searchParams: Promise<ScopeParams> }) {
   const context = await dashboardContext()
-  if (!context) redirect('/login')
   if (context.mode !== 'live') return <Products />
 
   const scope = scopeFromParams(await searchParams)
