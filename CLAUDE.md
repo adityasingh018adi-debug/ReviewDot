@@ -71,9 +71,12 @@ Next.js 15 (App Router) · React 18 · TypeScript · Tailwind v4 · Supabase · 
   address is an input, never stored, and the daily rotation stops a device being
   followed across days. Without `VISITOR_SALT` it stays null rather than being
   faked.
-- Rate limits are per process and prune (`src/lib/rate-limit.ts`). The scan
-  limit is deliberately generous — a whole café shares one address — and when it
-  trips the page still renders; only the telemetry write is dropped.
+- Rate limits are **durable** (`src/services/rate-limit.server.ts` →
+  `app_rate_limit`). Counting happens in Postgres, so it survives a restart and
+  covers every instance; the in-memory limiter is only the fallback when the
+  database is unreachable or unconfigured. The scan limit is deliberately
+  generous — a whole café shares one address — and when it trips the page still
+  renders; only the telemetry write is dropped.
 
 ## Deploy pipeline
 
@@ -153,6 +156,22 @@ default branch unless they have just asked for a deploy.
 - `/api/ai/review` stays public because customers scanning a code have no
   account; `/api/ai/response` and `/api/ai/assistant` require one and are rate
   limited per user.
+- API route payloads parse through `src/lib/schemas.ts` (zod). Server actions
+  take flat form data through their own `field()` helper — wrapping that in a
+  schema would be ceremony. Nested payloads get a schema because nested is where
+  hand-rolled parsing quietly stops checking.
+- Plan limits are enforced (`src/services/quota.server.ts`). Live totals
+  (outlets, campaigns, members, products) are counted at check time so deleting
+  something frees the allowance; only consumables (AI drafts) are metered into
+  `usage_counters`, atomically via `app_record_usage`. A quota check that errors
+  allows the action — a commercial limit is not a security boundary, unlike the
+  policies, which are never bypassed on error.
+- `next.config.mjs` ships a CSP. It cannot lock down inline script without a
+  per-request nonce, which would make the marketing pages dynamic; it does close
+  everything around it. Don't add a third-party script origin without revisiting
+  it.
+- Lint runs during `npm run build`. Don't set `eslint.ignoreDuringBuilds` back
+  to true — a local build that skips lint is a build that disagrees with CI.
 - The 30-day demo window reproduces the product's reference figures exactly (1,248 scans, 326 reviews,
   4.7★, 26.1%, and the product table). `src/lib/data.test.ts` asserts them — if a change moves those
   numbers, that is a bug in the change, not the test.
@@ -170,5 +189,5 @@ npm run lint
 npm test           # Vitest
 npm run test:e2e   # Playwright (builds and starts the app itself)
 npm run db:migrate # apply outstanding migrations (tracked, once each)
-npm run db:test    # 172 database checks: isolation, auth, policy, flow, reporting
+npm run db:test    # 196 database checks: isolation, auth, policy, flow, reporting, limits
 ```

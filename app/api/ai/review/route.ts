@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
-import { clientIp, limiter } from '@/lib/rate-limit'
+import { clientIp } from '@/lib/rate-limit'
+import { checkLimit, retryAfterSeconds } from '@/services/rate-limit.server'
 import { LocalAIReviewService, groundingIssues } from '@/services/ai-review'
 import { ClaudeReviewService } from '@/services/ai-review.server'
-import type { ReviewDraftInput } from '@/services/types'
+import { firstIssue, reviewDraftSchema } from '@/lib/schemas'
 
 /**
  * Drafts a review from a customer's own feedback.
@@ -14,46 +15,27 @@ import type { ReviewDraftInput } from '@/services/types'
 
 export const runtime = 'nodejs'
 
-const MAX_COMMENT = 2000
-const MAX_TAGS = 12
-
-function parse(body: unknown): ReviewDraftInput | null {
-  if (!body || typeof body !== 'object') return null
-  const input = body as Record<string, unknown>
-  const comment = typeof input.comment === 'string' ? input.comment.trim().slice(0, MAX_COMMENT) : ''
-  const rating = Number(input.rating)
-  if (!comment || !Number.isInteger(rating) || rating < 1 || rating > 5) return null
-
-  return {
-    comment,
-    rating,
-    tags: Array.isArray(input.tags)
-      ? input.tags.filter((tag): tag is string => typeof tag === 'string').slice(0, MAX_TAGS)
-      : [],
-    businessName: String(input.businessName ?? '').slice(0, 120),
-    outletName: String(input.outletName ?? '').slice(0, 120),
-    productName: input.productName ? String(input.productName).slice(0, 120) : undefined,
-    tone: input.tone === 'warm' || input.tone === 'concise' || input.tone === 'detailed' ? input.tone : 'natural',
-  }
-}
-
-/** Shared with the scan-path actions, and unlike the map this replaces, it prunes. */
-const LIMIT = { max: 12, windowMs: 60_000 }
+/**
+ * Keyed on the address, because a customer scanning a code has no account.
+ * Generous for the same reason the scan limit is: a whole café shares one.
+ */
+const LIMIT = { max: 12, windowSeconds: 60 }
 
 export async function POST(request: Request) {
   const ip = clientIp(request.headers)
-  const verdict = limiter.check(`ai-review:${ip}`, LIMIT.max, LIMIT.windowMs)
+  const verdict = await checkLimit(`ai-review:${ip}`, LIMIT.max, LIMIT.windowSeconds)
   if (!verdict.ok) {
     return NextResponse.json(
       { error: 'Too many requests, please retry shortly.' },
-      { status: 429, headers: { 'retry-after': String(Math.ceil(verdict.retryAfterMs / 1000)) } },
+      { status: 429, headers: { 'retry-after': String(retryAfterSeconds(verdict)) } },
     )
   }
 
-  const input = parse(await request.json().catch(() => null))
-  if (!input) {
-    return NextResponse.json({ error: 'A comment and a rating between 1 and 5 are required.' }, { status: 400 })
+  const parsed = reviewDraftSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
+    return NextResponse.json({ error: firstIssue(parsed.error) }, { status: 400 })
   }
+  const input = parsed.data
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   const service = apiKey ? new ClaudeReviewService(apiKey) : new LocalAIReviewService()

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getWorkspaceSession } from '@/services/auth.server'
 import { isSupabaseConfigured } from '@/services/supabase'
-import { limiter } from '@/lib/rate-limit'
-import type { ResponseInput, ResponseTone } from '@/services/types'
+import { checkLimit, retryAfterSeconds } from '@/services/rate-limit.server'
+import { firstIssue, responseDraftSchema } from '@/lib/schemas'
+import type { ResponseInput } from '@/services/types'
 
 /**
  * Drafts a business reply to a piece of feedback, for owners and managers.
@@ -10,8 +11,6 @@ import type { ResponseInput, ResponseTone } from '@/services/types'
  */
 
 export const runtime = 'nodejs'
-
-const TONES: ResponseTone[] = ['professional', 'friendly', 'warm', 'concise']
 
 const SYSTEM_PROMPT = `You write short replies from a business to a customer's feedback.
 Acknowledge what they actually said, never invent policies, compensation, names or facts,
@@ -33,7 +32,7 @@ function localReply(input: ResponseInput): string {
   return [opener, middle, close].join(' ')
 }
 
-const LIMIT = { max: 20, windowMs: 60_000 }
+const LIMIT = { max: 20, windowSeconds: 60 }
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured()) {
@@ -45,28 +44,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Sign in to draft a reply.' }, { status: 401 })
   }
 
-  const verdict = limiter.check(`ai-response:${workspace.user.id}`, LIMIT.max, LIMIT.windowMs)
+  const verdict = await checkLimit(`ai-response:${workspace.user.id}`, LIMIT.max, LIMIT.windowSeconds)
   if (!verdict.ok) {
     return NextResponse.json(
       { error: 'Too many requests, please retry shortly.' },
-      { status: 429, headers: { 'retry-after': String(Math.ceil(verdict.retryAfterMs / 1000)) } },
+      { status: 429, headers: { 'retry-after': String(retryAfterSeconds(verdict)) } },
     )
   }
 
-  const body = (await request.json().catch(() => null)) as Partial<ResponseInput> | null
-  const feedback = typeof body?.feedback === 'string' ? body.feedback.trim().slice(0, 2000) : ''
-  const rating = Number(body?.rating)
-  if (!feedback || !Number.isInteger(rating) || rating < 1 || rating > 5) {
-    return NextResponse.json({ error: 'Feedback text and a rating are required.' }, { status: 400 })
+  const parsed = responseDraftSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
+    return NextResponse.json({ error: firstIssue(parsed.error) }, { status: 400 })
   }
-
-  const input: ResponseInput = {
-    feedback,
-    rating,
-    businessName: String(body?.businessName ?? '').slice(0, 120),
-    outletName: String(body?.outletName ?? '').slice(0, 120),
-    tone: TONES.includes(body?.tone as ResponseTone) ? (body?.tone as ResponseTone) : 'professional',
-  }
+  const input: ResponseInput = parsed.data
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return NextResponse.json({ text: localReply(input), offline: true })

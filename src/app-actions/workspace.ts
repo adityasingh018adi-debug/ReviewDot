@@ -6,6 +6,7 @@ import { getWorkspaceSession } from '@/services/auth.server'
 import { isSupabaseConfigured } from '@/services/supabase'
 import { generatePublicId, referenceCode, shortCodeFor } from '@/lib/qr-identity'
 import { reportError } from '@/lib/observability'
+import { checkQuota } from '@/services/quota.server'
 
 /**
  * Outlets and QR campaigns, created and edited by the business.
@@ -58,6 +59,9 @@ export async function createOutletAction(form: FormData): Promise<ActionResult> 
 
   const reviewUrl = field(form, 'googleReviewUrl')
   if (reviewUrl && !validUrl(reviewUrl)) return { error: 'That review link is not a valid URL.' }
+
+  const quota = await checkQuota(active.organizationId, 'outlets')
+  if (!quota.allowed) return { error: quota.message }
 
   const supabase = await serverClient()
 
@@ -164,6 +168,9 @@ export async function createCampaignAction(form: FormData): Promise<ActionResult
   if (!name) return { error: 'Give this code a name.' }
   if (!outletId) return { error: 'Choose an outlet.' }
   if (!CAMPAIGN_TYPES.includes(type)) return { error: 'Choose a placement type.' }
+
+  const quota = await checkQuota(active.organizationId, 'qr_campaigns')
+  if (!quota.allowed) return { error: quota.message }
 
   const supabase = await serverClient()
 

@@ -24,6 +24,8 @@ export type ErrorScope =
   | 'review.event'
   | 'outlet.write'
   | 'campaign.write'
+  | 'rate.limit'
+  | 'quota.check'
 
 /** Ids and counts only. Anything free-text belongs in the database, not here. */
 export type ErrorMeta = Record<string, string | number | boolean | null | undefined>

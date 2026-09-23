@@ -14,12 +14,14 @@ migrations/0007_campaign_reporting.sql per-campaign scan and feedback counts
 migrations/0008_role_alignment.sql  write policies matched to the role matrix
 migrations/0009_analytics.sql       tags, funnel and customer aggregates
 migrations/0010_products.sql        per-product feedback counts
+migrations/0011_limits.sql          durable rate limiting, usage metering
 migrate.sh                   the runner: applies each migration once, tracked
 tests/rls_test.sql           isolation tests; every check raises on failure
 tests/auth_test.sql          signup trigger and onboarding
 tests/policy_test.sql        roles, response scope, triage scope, erasure
 tests/flow_test.sql          the customer journey, end to end
 tests/reporting_test.sql     dashboard aggregates, and their isolation
+tests/limits_test.sql        rate limiting and usage metering
 ```
 
 ## Applying
@@ -59,7 +61,8 @@ real Supabase project.
 npm run db:test    # runs every file in tests/, in order
 ```
 
-172 checks in total — 23 isolation, 29 auth, 47 policy, 23 flow, 50 reporting.
+196 checks in total — 23 isolation, 29 auth, 47 policy, 23 flow, 50 reporting,
+24 limits.
 Every suite runs inside a transaction and rolls back, so they are safe against a
 development database.
 
@@ -187,3 +190,26 @@ substance: every new grant still goes through `app_can_see_outlet`, so a
 regional manager reaches their assigned outlets and no others. Creating and
 archiving an outlet stays with the organization's admins, which is what the
 matrix says.
+
+## Limits (0011)
+
+Two things that were held in a Node process and therefore were not really held.
+
+**Rate limits** lived in a `Map`: on more than one instance the real ceiling was
+(instances × limit), and a cold start wiped it. `app_rate_limit()` counts in
+Postgres with an `insert … on conflict do update`, so two requests racing on the
+same key cannot lose a count the way a read-modify-write would. The table is
+revoked from every client role — including `anon` and `authenticated` by name,
+because Supabase's default privileges grant those explicitly and a revoke from
+`PUBLIC` does not take them away. A test asserts a signed-in user can neither
+read the table nor call the function.
+
+**Usage** was never recorded at all. `usage_counters` had existed since 0001 and
+never held a row, so every plan limit was data nobody read. `app_record_usage()`
+increments atomically for the current month.
+
+`app_quota_usage()` reports live totals — outlets, campaigns, members, products
+— by counting rather than metering, because a stored counter drifts the first
+time something is deleted and then either blocks a customer who is under their
+limit or lets one sail past it. Archiving an outlet frees the allowance
+immediately, and there is a test for exactly that.

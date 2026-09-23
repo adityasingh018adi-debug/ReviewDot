@@ -6,7 +6,9 @@ import { serviceClient } from '@/services/supabase.server'
 import { resolveScan, type ScanContext } from '@/services/scan-context'
 import { trimHeader, visitorHash } from '@/services/visitor.server'
 import { attempt, reportError } from '@/lib/observability'
-import { clientIp, limiter } from '@/lib/rate-limit'
+import { checkQuota, recordUsage } from '@/services/quota.server'
+import { clientIp } from '@/lib/rate-limit'
+import { checkLimit } from '@/services/rate-limit.server'
 import type { DestinationKind } from '@/services/types'
 
 /**
@@ -31,9 +33,9 @@ import type { DestinationKind } from '@/services/types'
  */
 
 /** Generous: a whole café can share one address, and none of them should be turned away. */
-const SCAN_LIMIT = { max: 60, windowMs: 60_000 }
+const SCAN_LIMIT = { max: 60, windowSeconds: 60 }
 /** A person cannot submit more than this by hand. */
-const WRITE_LIMIT = { max: 12, windowMs: 60_000 }
+const WRITE_LIMIT = { max: 12, windowSeconds: 60 }
 
 async function requestFacts() {
   const list = await headers()
@@ -85,7 +87,7 @@ export async function recordScan(publicId: string): Promise<ScanRecord> {
 
   // Over the limit the page still renders — the customer is never turned away.
   // Only the telemetry write is dropped.
-  if (!limiter.check(`scan:${ip}:${context.campaignId}`, SCAN_LIMIT.max, SCAN_LIMIT.windowMs).ok) {
+  if (!(await checkLimit(`scan:${ip}:${context.campaignId}`, SCAN_LIMIT.max, SCAN_LIMIT.windowSeconds)).ok) {
     return { sessionId: null }
   }
 
@@ -144,7 +146,7 @@ export async function submitFeedback(
   if (!context) return { feedbackId: null }
 
   const { ip } = await requestFacts()
-  if (!limiter.check(`feedback:${ip}`, WRITE_LIMIT.max, WRITE_LIMIT.windowMs).ok) {
+  if (!(await checkLimit(`feedback:${ip}`, WRITE_LIMIT.max, WRITE_LIMIT.windowSeconds)).ok) {
     reportError('feedback.submit', 'rate limited', { campaignId: context.campaignId })
     return { feedbackId: null }
   }
@@ -202,7 +204,20 @@ export async function saveDraft(
   if (!context) return { draftId: null }
 
   const { ip } = await requestFacts()
-  if (!limiter.check(`draft:${ip}`, WRITE_LIMIT.max, WRITE_LIMIT.windowMs).ok) return { draftId: null }
+  if (!(await checkLimit(`draft:${ip}`, WRITE_LIMIT.max, WRITE_LIMIT.windowSeconds)).ok) return { draftId: null }
+
+  // Over the monthly allowance the draft is still shown to the customer — they
+  // are mid-journey and the business's billing is not their problem — but it is
+  // not stored, and nothing is metered for it.
+  const quota = await checkQuota(context.organizationId, 'ai_drafts_per_month')
+  if (!quota.allowed) {
+    reportError('draft.save', 'AI draft quota reached', {
+      organizationId: context.organizationId,
+      used: quota.used,
+      limit: quota.limit,
+    })
+    return { draftId: null }
+  }
 
   return (
     (await attempt('draft.save', { campaignId: context.campaignId }, async () => {
@@ -233,6 +248,7 @@ export async function saveDraft(
         .single()
 
       if (error) throw error
+      await recordUsage(context.organizationId, 'ai_drafts_per_month')
       return { draftId: data.id as string }
     })) ?? { draftId: null }
   )
@@ -254,7 +270,7 @@ export async function approveDraft(
   if (!context) return
 
   const { ip } = await requestFacts()
-  if (!limiter.check(`approve:${ip}`, WRITE_LIMIT.max, WRITE_LIMIT.windowMs).ok) return
+  if (!(await checkLimit(`approve:${ip}`, WRITE_LIMIT.max, WRITE_LIMIT.windowSeconds)).ok) return
 
   await attempt('draft.approve', { campaignId: context.campaignId }, async () => {
     const supabase = serviceClient()
@@ -307,7 +323,7 @@ export async function recordDestinationClick(
   if (!context) return
 
   const { ip } = await requestFacts()
-  if (!limiter.check(`event:${ip}`, WRITE_LIMIT.max, WRITE_LIMIT.windowMs).ok) return
+  if (!(await checkLimit(`event:${ip}`, WRITE_LIMIT.max, WRITE_LIMIT.windowSeconds)).ok) return
 
   // The destination must be one this outlet actually configured. Taking the url
   // from the caller and storing it would let a payload write an arbitrary link
