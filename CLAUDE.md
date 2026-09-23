@@ -130,6 +130,14 @@ default branch unless they have just asked for a deploy.
 - The dashboard scope lives in the URL (`?range=&outlet=`), because the server
   has to read it before it renders. The client store still holds it in demo mode
   only.
+- Dashboard **writes** are server actions using `serverClient()`, so the write
+  policies enforce who may do what. Using `serviceClient()` there would work and
+  would silently remove that. `organization_id` always comes from the session,
+  never from the form.
+- `src/lib/permissions.ts` and the write policies must agree. When they don't,
+  the UI offers a button the database refuses with nothing to explain it — fix
+  both sides deliberately (see `0008_role_alignment.sql`), don't just change
+  one.
 - Demo mode keeps reading `src/lib/metrics.ts` through `DemoDashboardRepo`, so
   the reference figures stay exact. Pages still on seeded data carry
   `<SeededNotice />`; delete that line when the page's queries land, and when
@@ -151,5 +159,5 @@ npm run lint
 npm test           # Vitest
 npm run test:e2e   # Playwright (builds and starts the app itself)
 npm run db:migrate # apply outstanding migrations (tracked, once each)
-npm run db:test    # 138 database checks: isolation, auth, policy, flow, reporting
+npm run db:test    # 152 database checks: isolation, auth, policy, flow, reporting
 ```

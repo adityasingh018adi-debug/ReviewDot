@@ -80,3 +80,36 @@ describe('DemoDashboardRepo', () => {
     expect(stats.conversion).toBeNull()
   })
 })
+
+describe('DemoDashboardRepo — outlets and campaigns', () => {
+  const repo = new DemoDashboardRepo()
+  const scope = scopeFromParams({ range: '30d' })
+
+  it('describes each outlet with its numbers', async () => {
+    const outlets = await repo.outletsDetail(scope)
+    expect(outlets.length).toBeGreaterThan(1)
+    for (const outlet of outlets) {
+      expect(outlet.name).toBeTruthy()
+      expect(outlet.shortCode).toMatch(/^[A-Z0-9]{2,6}$/)
+      expect(outlet.campaigns).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it('lists campaigns with a scan code and a printed reference that differ', async () => {
+    const campaigns = await repo.campaigns(scope)
+    expect(campaigns.length).toBeGreaterThan(0)
+    for (const campaign of campaigns) {
+      expect(campaign.publicId).toBeTruthy()
+      expect(campaign.referenceCode).not.toBe(campaign.publicId)
+      expect(campaign.outletId).toBeTruthy()
+    }
+  })
+
+  it('narrows campaigns to one outlet', async () => {
+    const [first] = await repo.outletOptions()
+    const all = await repo.campaigns(scope)
+    const one = await repo.campaigns({ ...scope, outletId: first!.id })
+    expect(one.length).toBeLessThanOrEqual(all.length)
+    expect(one.every((campaign) => campaign.outletId === first!.id)).toBe(true)
+  })
+})

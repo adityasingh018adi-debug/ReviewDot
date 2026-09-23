@@ -176,6 +176,39 @@ select assert(
      now() - interval '2 days', now())) = 0,
   'another organization''s distribution is empty');
 
+-- ---------------------------------------------------------------- per-campaign
+
+select assert(
+  (select scans from app_campaign_breakdown('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now())
+    where campaign_id = 'c3000000-0000-0000-0000-00000000000a') = 10,
+  'the campaign breakdown counts scans per code');
+
+select assert(
+  (select reviews from app_campaign_breakdown('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now())
+    where campaign_id = 'c3000000-0000-0000-0000-00000000000a') = 4,
+  'and feedback per code');
+
+select assert(
+  (select clicks from app_campaign_breakdown('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now())
+    where campaign_id = 'c3000000-0000-0000-0000-00000000000a') = 2,
+  'and destination clicks per code');
+
+select assert(
+  (select count(*) from app_campaign_breakdown('c1000000-0000-0000-0000-00000000000b',
+     now() - interval '2 days', now())) = 0,
+  'another organization''s campaign breakdown is empty');
+
+-- an outlet-scoped member sees only their own outlet's codes
+set local request.jwt.claim.sub = 'c0000000-0000-0000-0000-00000000000e';
+select assert(
+  (select count(*) from app_campaign_breakdown('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now())) = 1,
+  'an outlet manager''s campaign breakdown covers only their outlet');
+set local request.jwt.claim.sub = 'c0000000-0000-0000-0000-00000000000a';
+
 -- ---------------------------------------------------------------- anon
 
 set local role anon;
@@ -186,6 +219,13 @@ do $$ begin
   raise exception 'FAILED: anonymous read a dashboard overview';
 exception when insufficient_privilege then
   raise notice 'ok  anonymous may not execute the reporting functions';
+end $$;
+
+do $$ begin
+  perform app_campaign_breakdown('c1000000-0000-0000-0000-00000000000a', now() - interval '2 days', now());
+  raise exception 'FAILED: anonymous read a campaign breakdown';
+exception when insufficient_privilege then
+  raise notice 'ok  anonymous may not read a campaign breakdown';
 end $$;
 
 rollback;

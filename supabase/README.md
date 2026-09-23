@@ -10,6 +10,8 @@ migrations/0003_plans.sql    plan catalogue and limits
 migrations/0004_auth.sql     auth.users → profiles, and onboarding
 migrations/0005_hardening.sql indexes, policy scope, erasure
 migrations/0006_reporting.sql dashboard aggregation, in the database
+migrations/0007_campaign_reporting.sql per-campaign scan and feedback counts
+migrations/0008_role_alignment.sql  write policies matched to the role matrix
 migrate.sh                   the runner: applies each migration once, tracked
 tests/rls_test.sql           isolation tests; every check raises on failure
 tests/auth_test.sql          signup trigger and onboarding
@@ -55,7 +57,7 @@ real Supabase project.
 npm run db:test    # runs every file in tests/, in order
 ```
 
-138 checks in total — 23 isolation, 29 auth, 39 policy, 23 flow, 24 reporting.
+152 checks in total — 23 isolation, 29 auth, 47 policy, 23 flow, 30 reporting.
 Every suite runs inside a transaction and rolls back, so they are safe against a
 development database.
 
@@ -163,3 +165,23 @@ member sees only their assigned outlets. `reporting_test.sql` checks both.
 
 `app_daily_series` uses `generate_series` rather than a group-by, so a quiet day
 is a zero on the chart instead of a gap the line is drawn straight through.
+
+## Role alignment (0008)
+
+`src/lib/permissions.ts` grants REGIONAL_MANAGER `outlet:update`,
+`product:manage` and `campaign:create/update/archive`, and describes the role as
+"manages the outlets assigned to them". The policies granted none of those:
+outlets and products were org-admin only, and campaigns allowed OUTLET_MANAGER
+but not REGIONAL_MANAGER.
+
+That disagreement is the failure the matrix exists to prevent — the UI offers a
+button and the database refuses it, with nothing to tell the user why. Writing
+the tests for the QR campaign form is what surfaced it.
+
+The policies were widened to match the documented intent rather than the matrix
+narrowed, because a regional manager who cannot create a QR code for their own
+outlets is not the role the product describes. The scoping is unchanged in
+substance: every new grant still goes through `app_can_see_outlet`, so a
+regional manager reaches their assigned outlets and no others. Creating and
+archiving an outlet stays with the organization's admins, which is what the
+matrix says.

@@ -79,3 +79,34 @@ describe('plans', () => {
     expect(planByCode('GROWTH').code).toBe('GROWTH')
   })
 })
+
+/**
+ * The matrix and the database policies have to agree, or the UI offers buttons
+ * the database refuses. Writing the QR form surfaced three places where they
+ * did not; 0008_role_alignment.sql widened the policies to match these, so
+ * these assertions are now the statement of intent that migration encodes.
+ */
+describe('the role matrix the policies mirror', () => {
+  it('lets a regional manager run the outlets assigned to them', () => {
+    for (const permission of ['campaign:create', 'campaign:update', 'campaign:archive', 'outlet:update', 'product:manage'] as const) {
+      expect(can('REGIONAL_MANAGER', permission), permission).toBe(true)
+    }
+  })
+
+  it('but not create or archive an outlet, which stays with the admins', () => {
+    expect(can('REGIONAL_MANAGER', 'outlet:create')).toBe(false)
+    expect(can('REGIONAL_MANAGER', 'outlet:archive')).toBe(false)
+  })
+
+  it('lets an outlet manager run their codes but not the outlet itself', () => {
+    expect(can('OUTLET_MANAGER', 'campaign:create')).toBe(true)
+    expect(can('OUTLET_MANAGER', 'outlet:update')).toBe(false)
+    expect(can('OUTLET_MANAGER', 'product:manage')).toBe(false)
+  })
+
+  it('keeps staff to handling feedback', () => {
+    expect(can('STAFF', 'feedback:respond')).toBe(true)
+    expect(can('STAFF', 'campaign:create')).toBe(false)
+    expect(can('STAFF', 'outlet:update')).toBe(false)
+  })
+})

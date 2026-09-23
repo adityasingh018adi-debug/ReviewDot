@@ -22,6 +22,8 @@ export type ErrorScope =
   | 'draft.save'
   | 'draft.approve'
   | 'review.event'
+  | 'outlet.write'
+  | 'campaign.write'
 
 /** Ids and counts only. Anything free-text belongs in the database, not here. */
 export type ErrorMeta = Record<string, string | number | boolean | null | undefined>

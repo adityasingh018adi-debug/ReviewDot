@@ -3,6 +3,7 @@ import { getWorkspaceSession } from './auth.server'
 import { DemoDashboardRepo } from './dashboard.demo'
 import { SupabaseDashboardRepo } from './dashboard.server'
 import type { DashboardRepo } from './dashboard'
+import { can, type Permission, type Role } from '@/lib/permissions'
 
 /**
  * Which dashboard a page is rendering, and where its numbers come from.
@@ -18,6 +19,13 @@ export type DashboardContext = {
   /** Null in demo mode — there is no real organization behind it. */
   organizationId: string | null
   organizationName: string | null
+  role: Role
+  /**
+   * Mirrors the policies so the UI does not offer something the database will
+   * refuse. The database is still what enforces it — this only decides what to
+   * render.
+   */
+  can: (permission: Permission) => boolean
 }
 
 export async function dashboardContext(): Promise<DashboardContext | null> {
@@ -29,6 +37,8 @@ export async function dashboardContext(): Promise<DashboardContext | null> {
       repo: new DemoDashboardRepo(),
       organizationId: null,
       organizationName: null,
+      role: 'OWNER',
+      can: () => true,
     }
   }
 
@@ -37,10 +47,13 @@ export async function dashboardContext(): Promise<DashboardContext | null> {
   // null rather than guessing keeps that decision in one place.
   if (!workspace?.active) return null
 
+  const role = workspace.active.role
   return {
     mode,
     repo: new SupabaseDashboardRepo(workspace.active.organizationId),
     organizationId: workspace.active.organizationId,
     organizationName: workspace.active.organizationName,
+    role,
+    can: (permission) => can(role, permission),
   }
 }

@@ -39,6 +39,44 @@ export type OutletRow = {
 
 export type RatingBucket = { rating: number; count: number; share: number }
 
+export type OutletStatus = 'active' | 'paused' | 'archived'
+
+export type OutletDetail = {
+  id: string
+  name: string
+  shortCode: string
+  city: string | null
+  address: string | null
+  googleReviewUrl: string | null
+  status: OutletStatus
+  campaigns: number
+  scans: number
+  reviews: number
+  rating: number | null
+}
+
+export type CampaignStatus = 'active' | 'paused' | 'archived'
+
+export type CampaignRow = {
+  id: string
+  name: string
+  /** The /r/{publicId} segment. Unguessable, and the only thing used for lookups. */
+  publicId: string
+  /** The printed label, e.g. RD-LL-TH-T04. Never used for lookups. */
+  referenceCode: string
+  type: string
+  placement: string | null
+  status: CampaignStatus
+  destination: string
+  outletId: string
+  outletName: string | null
+  productName: string | null
+  createdAt: string
+  scans: number
+  reviews: number
+  clicks: number
+}
+
 export type FeedbackItem = {
   id: string
   createdAt: string
@@ -72,6 +110,8 @@ export interface DashboardRepo {
   outlets(scope: DashboardScope): Promise<OutletRow[]>
   ratingDistribution(scope: DashboardScope): Promise<RatingBucket[]>
   feedback(scope: DashboardScope, filter?: FeedbackFilter): Promise<Page<FeedbackItem>>
+  outletsDetail(scope: DashboardScope): Promise<OutletDetail[]>
+  campaigns(scope: DashboardScope): Promise<CampaignRow[]>
 }
 
 export const PAGE_SIZE = 25

@@ -209,6 +209,81 @@ select assert((select count(*) from product_mentions) = 0, 'another organization
 select assert((select count(*) from usage_counters) = 1, 'another organization sees only its own usage');
 select assert((select count(*) from analytics_events) = 1, 'another organization sees only its own analytics');
 
+-- ---------------------------------------------------------------- campaign and outlet writes
+--
+-- These pin the alignment 0008 made: every role that permissions.ts says can
+-- manage campaigns or outlets actually can, scoped to outlets it can see, and
+-- no role gets more than the matrix says.
+
+-- an outlet manager may create a code for their own outlet
+set local request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a4';
+insert into qr_campaigns (organization_id, outlet_id, name, public_id, reference_code, type)
+values ('0a000000-0000-0000-0000-000000000001', '0a000000-2222-0000-0000-00000000000a',
+        'Table 04', 'mgr0000001', 'RD-OA-TH-T04', 'table');
+select assert(true, 'an outlet manager may create a code for their own outlet');
+
+-- but not for one they are not assigned to
+do $$ begin
+  insert into qr_campaigns (organization_id, outlet_id, name, public_id, reference_code, type)
+  values ('0a000000-0000-0000-0000-000000000001', '0a000000-2222-0000-0000-00000000000b',
+          'Reaching', 'mgr0000002', 'RD-OA-BN-T04', 'table');
+  raise exception 'FAILED: outlet manager created a code for an unassigned outlet';
+exception when insufficient_privilege then
+  raise notice 'ok  an outlet manager may not create a code for another outlet';
+end $$;
+
+-- a regional manager covers both of their outlets
+set local request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a3';
+insert into qr_campaigns (organization_id, outlet_id, name, public_id, reference_code, type)
+values ('0a000000-0000-0000-0000-000000000001', '0a000000-2222-0000-0000-00000000000b',
+        'Bandra counter', 'reg0000001', 'RD-OA-BN-C01', 'counter');
+select assert(true, 'a regional manager may create a code for an assigned outlet');
+
+-- and may edit an outlet's details, which permissions.ts grants them
+update outlets set city = 'Thane West' where id = '0a000000-2222-0000-0000-00000000000a';
+select assert(
+  (select city from outlets where id = '0a000000-2222-0000-0000-00000000000a') = 'Thane West',
+  'a regional manager may edit an outlet they manage');
+
+-- but creating a new outlet is still an org admin's job
+do $$ begin
+  insert into outlets (organization_id, name, short_code)
+  values ('0a000000-0000-0000-0000-000000000001', 'Andheri', 'AN');
+  raise exception 'FAILED: regional manager created an outlet';
+exception when insufficient_privilege then
+  raise notice 'ok  a regional manager may not create an outlet';
+end $$;
+
+-- staff manage nothing
+set local request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a5';
+do $$ begin
+  insert into qr_campaigns (organization_id, outlet_id, name, public_id, reference_code, type)
+  values ('0a000000-0000-0000-0000-000000000001', '0a000000-2222-0000-0000-00000000000a',
+          'Staff code', 'stf0000001', 'RD-OA-TH-S01', 'table');
+  raise exception 'FAILED: staff created a QR code';
+exception when insufficient_privilege then
+  raise notice 'ok  staff may not create a QR code';
+end $$;
+
+do $$ begin
+  update outlets set city = 'Nowhere' where id = '0a000000-2222-0000-0000-00000000000a';
+  if found then raise exception 'FAILED: staff edited an outlet'; end if;
+  raise notice 'ok  staff may not edit an outlet';
+end $$;
+
+-- and another organization reaches none of it
+set local request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000b1';
+do $$ begin
+  insert into qr_campaigns (organization_id, outlet_id, name, public_id, reference_code, type)
+  values ('0a000000-0000-0000-0000-000000000001', '0a000000-2222-0000-0000-00000000000a',
+          'Trespass', 'oth0000001', 'RD-OA-TH-X01', 'table');
+  raise exception 'FAILED: another organization created a code in ours';
+exception when insufficient_privilege then
+  raise notice 'ok  another organization may not create a code in ours';
+end $$;
+
+set local request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a5';
+
 -- ---------------------------------------------------------------- erasure
 
 -- staff may not erase

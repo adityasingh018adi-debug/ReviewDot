@@ -9,6 +9,8 @@ import {
   type FeedbackFilter,
   type FeedbackItem,
   type OutletRow,
+  type CampaignRow,
+  type OutletDetail,
   type OutletOption,
   type OverviewStats,
   type Page,
@@ -236,5 +238,125 @@ export class SupabaseDashboardRepo implements DashboardRepo {
       })),
       nextCursor: hasMore && last ? encodeCursor(last.created_at, last.id) : null,
     }
+  }
+
+  async outletsDetail(scope: DashboardScope): Promise<OutletDetail[]> {
+    const supabase = await serverClient()
+
+    // The rows and their numbers separately: the counts are an aggregate the
+    // database computes, and merging two small result sets here beats a
+    // correlated subquery per column in a view.
+    const [rows, totals] = await Promise.all([
+      supabase
+        .from('outlets')
+        .select('id, name, short_code, city, address, google_review_url, status, qr_campaigns(count)')
+        .neq('status', 'archived')
+        .order('name'),
+      this.outletTotals(scope),
+    ])
+
+    if (rows.error) throw rows.error
+
+    return (
+      (rows.data ?? []) as unknown as {
+        id: string
+        name: string
+        short_code: string
+        city: string | null
+        address: string | null
+        google_review_url: string | null
+        status: OutletDetail['status']
+        qr_campaigns: { count: number }[]
+      }[]
+    ).map((row) => {
+      const totalsFor = totals.get(row.id)
+      return {
+        id: row.id,
+        name: row.name,
+        shortCode: row.short_code,
+        city: row.city,
+        address: row.address,
+        googleReviewUrl: row.google_review_url,
+        status: row.status,
+        campaigns: row.qr_campaigns?.[0]?.count ?? 0,
+        scans: totalsFor?.scans ?? 0,
+        reviews: totalsFor?.reviews ?? 0,
+        rating: totalsFor?.rating ?? null,
+      }
+    })
+  }
+
+  private async outletTotals(scope: DashboardScope) {
+    const breakdown = await this.outlets(scope)
+    return new Map(breakdown.map((row) => [row.id, row]))
+  }
+
+  async campaigns(scope: DashboardScope): Promise<CampaignRow[]> {
+    const supabase = await serverClient()
+
+    let query = supabase
+      .from('qr_campaigns')
+      .select(
+        'id, name, public_id, reference_code, type, placement, status, destination, outlet_id, created_at, outlets (name), products (name)',
+      )
+      .neq('status', 'archived')
+      .order('created_at', { ascending: false })
+
+    if (scope.outletId) query = query.eq('outlet_id', scope.outletId)
+
+    const [rows, counts] = await Promise.all([
+      query,
+      supabase.rpc('app_campaign_breakdown', {
+        p_org: this.organizationId,
+        p_from: scope.range.from.toISOString(),
+        p_to: scope.range.to.toISOString(),
+        p_outlet: scope.outletId,
+      }),
+    ])
+
+    if (rows.error) throw rows.error
+    if (counts.error) throw counts.error
+
+    const byCampaign = new Map(
+      ((counts.data ?? []) as { campaign_id: string; scans: number | string; reviews: number | string; clicks: number | string }[]).map(
+        (row) => [row.campaign_id, row],
+      ),
+    )
+
+    return (
+      (rows.data ?? []) as unknown as {
+        id: string
+        name: string
+        public_id: string
+        reference_code: string
+        type: string
+        placement: string | null
+        status: CampaignRow['status']
+        destination: string
+        outlet_id: string
+        created_at: string
+        outlets: { name: string } | null
+        products: { name: string } | null
+      }[]
+    ).map((row) => {
+      const stats = byCampaign.get(row.id)
+      return {
+        id: row.id,
+        name: row.name,
+        publicId: row.public_id,
+        referenceCode: row.reference_code,
+        type: row.type,
+        placement: row.placement,
+        status: row.status,
+        destination: row.destination,
+        outletId: row.outlet_id,
+        outletName: row.outlets?.name ?? null,
+        productName: row.products?.name ?? null,
+        createdAt: row.created_at,
+        scans: int(stats?.scans),
+        reviews: int(stats?.reviews),
+        clicks: int(stats?.clicks),
+      }
+    })
   }
 }

@@ -1,6 +1,6 @@
 import { byOutlet, entriesIn, overview, ratingDistribution, seriesFor, type Scope } from '@/lib/metrics'
 import { baseData } from '@/lib/metrics'
-import { outletById, outlets as demoOutlets, productById } from '@/lib/data'
+import { outletById, outlets as demoOutlets, productById, qrCodes as demoQRCodes } from '@/lib/data'
 import type { DashboardScope } from './scope'
 import {
   PAGE_SIZE,
@@ -10,6 +10,8 @@ import {
   type FeedbackFilter,
   type FeedbackItem,
   type OutletRow,
+  type CampaignRow,
+  type OutletDetail,
   type OutletOption,
   type OverviewStats,
   type Page,
@@ -112,5 +114,47 @@ export class DemoDashboardRepo implements DashboardRepo {
       })),
       nextCursor: hasMore && last ? encodeCursor(last.createdAt, last.id) : null,
     }
+  }
+
+  async outletsDetail(scope: DashboardScope): Promise<OutletDetail[]> {
+    const totals = new Map((await this.outlets(scope)).map((row) => [row.id, row]))
+    return demoOutlets.map((outlet) => {
+      const row = totals.get(outlet.id)
+      return {
+        id: outlet.id,
+        name: outlet.name,
+        shortCode: outlet.name.slice(0, 2).toUpperCase(),
+        city: outlet.city ?? null,
+        address: null,
+        googleReviewUrl: 'https://g.page/r/love-and-latte/review',
+        status: 'active' as const,
+        campaigns: demoQRCodes.filter((qr) => qr.outletId === outlet.id).length,
+        scans: row?.scans ?? 0,
+        reviews: row?.reviews ?? 0,
+        rating: row?.rating ?? null,
+      }
+    })
+  }
+
+  async campaigns(scope: DashboardScope): Promise<CampaignRow[]> {
+    return demoQRCodes
+      .filter((qr) => !scope.outletId || qr.outletId === scope.outletId)
+      .map((qr) => ({
+        id: qr.id,
+        name: qr.label,
+        publicId: qr.code,
+        referenceCode: qr.reference ?? qr.code.toUpperCase(),
+        type: qr.type,
+        placement: qr.location ?? null,
+        status: qr.status === 'archived' ? ('archived' as const) : (qr.status as CampaignRow['status']),
+        destination: qr.destination,
+        outletId: qr.outletId,
+        outletName: outletById(qr.outletId)?.name ?? null,
+        productName: qr.productId ? (productById(qr.productId)?.name ?? null) : null,
+        createdAt: qr.createdAt,
+        scans: 0,
+        reviews: 0,
+        clicks: 0,
+      }))
   }
 }
