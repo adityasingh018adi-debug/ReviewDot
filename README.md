@@ -17,7 +17,7 @@ SCAN → RATE → FEEDBACK → REVIEW → INSIGHT → ACTION
 npm install
 npm run dev        # dev server
 npm run build      # type-check + production build
-npm run preview    # serve the production build
+npm start          # serve the production build
 npm run lint       # ESLint
 npm test           # Vitest unit tests
 npm run test:e2e   # Playwright end-to-end tests
@@ -105,27 +105,37 @@ e2e/             Playwright smoke tests
 
 ## Deploying
 
-reviewdot.in runs on Hostinger as a Node.js app: `npm start` boots `server.js`, a zero-dependency
-static server that serves `dist/` with an SPA fallback and long-lived caching for hashed assets.
+reviewdot.in runs on Hostinger as a **Node.js app deployment** (hPanel → Websites → Deployments),
+not as static files in `public_html/`. This is a Next.js app with middleware, server actions and
+dynamic routes, so it needs a Node process — there is no static bundle to upload:
 
-```bash
-npm run build && npm run bundle:next   # → reviewdot-hostinger-next.zip (Next.js wrapper)
-npm run build && npm run bundle        # → reviewdot-hostinger.zip (Node server, output dir `dist`)
+```
+Framework: Next.js
+npm install && npm run build && npm start
 ```
 
-The hosting deployment is configured as Framework: Next.js, whose build step requires a `.next/`
-directory — `bundle:next` produces one by wrapping the same build in a real Next.js app that serves
-`public/` and rewrites every route to the app shell. Use the plain bundle only if the framework
-setting is changed to Other with output directory `dist`.
+Either zip the repository (without `node_modules` and `.next`) and upload it there, or point that
+deployment at this repository so it ships on push to the default branch
+(`claude/premium-ai-review-saas-vy8lou`).
 
-Upload the bundle in hPanel → Websites → Deployments, or point the deployment at this repository so
-it ships on push. Pushing to the default branch (`claude/premium-ai-review-saas-vy8lou`) also runs CI
-and FTP-uploads `dist/` to `public_html/`, which is useful for static hosting but is not what the
-domain currently serves.
+Apply any outstanding database migrations before the new code serves traffic, or it will call
+functions that do not exist yet:
+
+```bash
+DATABASE_URL="…" npm run db:migrate
+```
+
+CI does **not** deploy. It used to FTP `dist/` to `public_html/`, which worked while this was a Vite
+SPA and cannot work now: `next build` produces `.next/`, and a Next.js app is not files you copy —
+it is a process you run. That job was removed rather than repointed, because nothing about FTP can
+start one.
+
+After a deploy, confirm the live site actually changed before calling it shipped.
 
 ## Notes
 
 - Hero stats (10K+ / 1M+ / 4.8★) and testimonials are illustrative placeholders for the marketing page.
-- The Anthropic API key entered in Settings is stored in the browser only and sent directly to Anthropic.
-- CI runs lint, unit tests, a type-checked build and the Playwright suite, then deploys `dist/` on the
-  default branch.
+- The model key is server-side only. AI runs behind `/api/ai/*` and the browser never holds a key;
+  an e2e test greps every client bundle for `anthropic` and `sk-ant` to keep that true.
+- CI runs lint, unit tests, a type-checked build and the Playwright suite on every branch. Deployment
+  is a separate, manual step — see above.

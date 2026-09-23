@@ -92,25 +92,27 @@ Next.js 15 (App Router) · React 18 · TypeScript · Tailwind v4 · Supabase · 
 ## Deploy pipeline
 
 Live site: **reviewdot.in**, hosted on Hostinger as a **Node.js app deployment** (hPanel → Websites →
-Deployments), not as static files in `public_html/`. `npm start` runs `server.js`, which serves the
-Vite build in `dist/` with an SPA fallback.
+Deployments), not as static files in `public_html/`.
 
-- The CI `deploy` job FTP-uploads `dist/` to `public_html/`. **That path does not feed reviewdot.in**
-  under the current hosting setup — a green deploy job is not proof the site changed.
-- To ship to the live site, build a deployment bundle and upload it in hPanel → Deployments
-  (or connect that deployment to this repo so it deploys on push):
-
-  The app is now a real Next.js project, so the hosting deployment's Framework: Next.js setting
-  matches it directly: `npm install && npm run build && npm start`. No wrapper bundle is needed —
-  zip the repository (without `node_modules` and `.next`) for hPanel → Deployments, or point that
-  deployment at the GitHub repo.
-
-- The **default branch** is `claude/premium-ai-review-saas-vy8lou`; the CI `deploy` job runs only there.
-- Feature work happens on `claude/amazing-rubin-enoruh`, then merges into the default branch.
-- `deploy` runs only after `verify` passes: lint → unit tests → type-checked build → Playwright e2e.
-- FTP credentials live in repo secrets (`FTP_HOST`, `FTP_USERNAME`, `FTP_PASSWORD`). They are never
-  needed locally and must never be printed or committed.
-- After any deploy, confirm the live site actually changed before reporting it as shipped.
+- This is a Next.js app with middleware, server actions and dynamic routes. There is no static
+  bundle: it needs a Node process. The hosting deployment's `Framework: Next.js` setting matches the
+  repo directly — `npm install && npm run build && npm start`. Zip the repository (without
+  `node_modules` and `.next`) for hPanel → Deployments, or point that deployment at this repo.
+- **CI does not deploy.** The `deploy` job FTP-uploaded `dist/` to `public_html/`; that worked while
+  this was a Vite SPA and broke the moment it became a Next.js app, because `next build` writes
+  `.next/` and there is no `dist/` to upload. It was removed rather than repointed — FTP cannot start
+  a Node process, so no destination would have made it work. Run 39 on the default branch is the
+  failure that proved it: `ENOENT: no such file or directory, scandir './dist/'`.
+- CI runs `verify` on every branch: lint → unit tests → type-checked build → Playwright e2e.
+- **Apply outstanding migrations before the new code serves traffic** (`npm run db:migrate` with
+  `DATABASE_URL`). Deploying code that calls a function the database does not have yet breaks the
+  pages that call it.
+- The **default branch** is `claude/premium-ai-review-saas-vy8lou`. Feature work happens on
+  `claude/amazing-rubin-enoruh`, then merges into it.
+- FTP credentials still live in repo secrets (`FTP_HOST`, `FTP_USERNAME`, `FTP_PASSWORD`) and are now
+  unused. They are never needed locally and must never be printed or committed.
+- After any deploy, confirm the live site actually changed before reporting it as shipped. A green CI
+  run is not evidence of that and never was.
 
 ### To ship a change
 
@@ -118,12 +120,13 @@ Vite build in `dist/` with an SPA fallback.
 npm run lint && npm test && npm run build && npm run test:e2e   # all four must pass
 git commit -am "…"
 git push -u origin claude/amazing-rubin-enoruh                   # feature branch
-git push origin HEAD:claude/premium-ai-review-saas-vy8lou        # ships it
+git push origin HEAD:claude/premium-ai-review-saas-vy8lou        # merges it
 ```
 
-Then watch the run in GitHub Actions and confirm the `deploy` job ends with "Sync complete".
-Deploying to Hostinger replaces the live site, so confirm with the user before pushing to the
-default branch unless they have just asked for a deploy.
+That push runs CI. It does **not** reach reviewdot.in — the deployment in hPanel does, and pushing
+only ships automatically if that deployment is connected to this repo. Deploying replaces the live
+site, so confirm with the user before pushing to the default branch unless they have just asked for a
+deploy.
 
 ## Conventions
 
