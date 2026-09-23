@@ -9,11 +9,13 @@ migrations/0002_rls.sql      row level security — where tenant isolation lives
 migrations/0003_plans.sql    plan catalogue and limits
 migrations/0004_auth.sql     auth.users → profiles, and onboarding
 migrations/0005_hardening.sql indexes, policy scope, erasure
+migrations/0006_reporting.sql dashboard aggregation, in the database
 migrate.sh                   the runner: applies each migration once, tracked
 tests/rls_test.sql           isolation tests; every check raises on failure
 tests/auth_test.sql          signup trigger and onboarding
 tests/policy_test.sql        roles, response scope, triage scope, erasure
 tests/flow_test.sql          the customer journey, end to end
+tests/reporting_test.sql     dashboard aggregates, and their isolation
 ```
 
 ## Applying
@@ -53,9 +55,9 @@ real Supabase project.
 npm run db:test    # runs every file in tests/, in order
 ```
 
-114 checks in total — 23 isolation, 29 auth, 39 policy, 23 flow. Every suite runs
-inside a transaction and rolls back, so they are safe against a development
-database.
+138 checks in total — 23 isolation, 29 auth, 39 policy, 23 flow, 24 reporting.
+Every suite runs inside a transaction and rolls back, so they are safe against a
+development database.
 
 A clean run prints one `ok` line per check. Any failure aborts with `FAILED: …`.
 
@@ -138,3 +140,26 @@ properly: `authenticated` may now update only `status` and `assigned_to`.
 should not silently rewrite the business's history. Outright deletion is
 available to org admins for the cases erasure does not cover; the cascades take
 the drafts, mentions and replies with it.
+
+## Reporting (0006)
+
+The dashboard used to fetch every row and bucket, average and trend it in
+JavaScript. That is free against a seeded array and impossible against two
+million feedback rows, so the aggregation moved into the database before the
+first real query was written rather than after.
+
+`app_overview`, `app_daily_series`, `app_outlet_breakdown` and
+`app_rating_distribution` each answer one panel in one round trip.
+
+All four are **SECURITY INVOKER**, which is the default and is load-bearing.
+They read tenant tables, so they must run as the caller with row level security
+applying. A SECURITY DEFINER function here would turn every one of them into a
+way to read another tenant's numbers.
+
+They take `p_org` from the caller, and that argument is *not* what authorizes the
+read — the policies on the underlying tables are. Asking for another
+organization's id returns zeroes rather than their data, and an outlet-scoped
+member sees only their assigned outlets. `reporting_test.sql` checks both.
+
+`app_daily_series` uses `generate_series` rather than a group-by, so a quiet day
+is a zero on the chart instead of a gap the line is drawn straight through.

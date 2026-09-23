@@ -1,3 +1,5 @@
+'use client'
+
 import { useMemo, useState } from 'react'
 import { formatDayShort, formatNumber } from '@/lib/utils'
 import { niceMax, scaleLinear, smoothPath, ticksFor } from './chart-utils'

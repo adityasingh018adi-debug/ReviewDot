@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import { formatNumber, formatPercent } from '@/lib/utils'
 

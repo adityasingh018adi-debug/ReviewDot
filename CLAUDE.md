@@ -116,9 +116,24 @@ default branch unless they have just asked for a deploy.
 - Routing is path-based (`/app`, `/r/{public_id}`) and server-rendered; marketing pages must stay
   crawlable, so keep their copy in server components rather than behind client-only rendering.
 - `import.meta.env` is a Vite API and does not exist here — read `process.env.NEXT_PUBLIC_*`.
-- All screens read one dataset through `src/lib/metrics.ts`; never fetch or compute stats in a page.
-  Replacing `src/lib/data.ts` with API calls is the path to a real backend — the types in
-  `src/lib/types.ts` are the contract.
+- Dashboard pages are **server components**. They resolve a scope from the query
+  string, ask `DashboardRepo` for it, and pass the result to a presentational
+  view. Never fetch or aggregate in a client component.
+- Aggregation happens in Postgres (`0006_reporting.sql`), never in the browser.
+  Nothing should fetch rows in order to count them.
+- Those reporting functions are `security invoker` on purpose. A `security
+  definer` one would hand any authenticated user every organization's numbers.
+  They take `p_org`, but RLS is what authorizes the read — asking for another
+  organization returns zeroes, and `reporting_test.sql` pins that.
+- Lists page by **keyset** (`created_at, id`), never offset: feedback only ever
+  grows at the front, so an offset repeats or skips rows between pages.
+- The dashboard scope lives in the URL (`?range=&outlet=`), because the server
+  has to read it before it renders. The client store still holds it in demo mode
+  only.
+- Demo mode keeps reading `src/lib/metrics.ts` through `DemoDashboardRepo`, so
+  the reference figures stay exact. Pages still on seeded data carry
+  `<SeededNotice />`; delete that line when the page's queries land, and when
+  none are left delete the component, `src/lib/data.ts` and the demo views.
 - The 30-day demo window reproduces the product's reference figures exactly (1,248 scans, 326 reviews,
   4.7★, 26.1%, and the product table). `src/lib/data.test.ts` asserts them — if a change moves those
   numbers, that is a bug in the change, not the test.
@@ -136,5 +151,5 @@ npm run lint
 npm test           # Vitest
 npm run test:e2e   # Playwright (builds and starts the app itself)
 npm run db:migrate # apply outstanding migrations (tracked, once each)
-npm run db:test    # 114 database checks: isolation, auth, policy, flow
+npm run db:test    # 138 database checks: isolation, auth, policy, flow, reporting
 ```

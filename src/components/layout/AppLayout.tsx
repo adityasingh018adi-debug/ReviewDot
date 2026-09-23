@@ -5,7 +5,6 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { SessionProvider, type UiSession } from './SessionProvider'
-import { SampleDataBanner } from './SampleDataBanner'
 
 export function AppLayout({
   session,
@@ -50,7 +49,6 @@ export function AppLayout({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenNav={() => setNavOpen(true)} />
-        {session.mode === 'live' ? <SampleDataBanner /> : null}
         <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
       </div>
     </div>

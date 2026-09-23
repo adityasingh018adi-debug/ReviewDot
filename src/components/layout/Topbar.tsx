@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useState } from 'react'
 import { Calendar, ChevronDown, LogOut, Menu, Moon, Settings, Sun } from 'lucide-react'
 import { business, outlets } from '@/lib/data'
 import { RANGE_OPTIONS } from '@/lib/metrics'
@@ -14,6 +15,35 @@ import { signOutAction } from '@/app-actions/auth'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/Field'
 import { Button } from '@/components/ui/Button'
+
+/**
+ * Moves the dashboard's scope into the URL.
+ *
+ * In live mode the server does the aggregation, so it has to be able to read
+ * the filters before it renders — which means the query string, not the client
+ * store. Demo mode still uses the store, because nothing server-side reads it.
+ */
+function useScopeParam() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const params = useSearchParams()
+
+  return useCallback(
+    (changes: Record<string, string | null>) => {
+      const next = new URLSearchParams(params?.toString() ?? '')
+      for (const [key, value] of Object.entries(changes)) {
+        if (value === null) next.delete(key)
+        else next.set(key, value)
+      }
+      // paging restarts whenever the scope changes, or the cursor points into
+      // a result set that no longer exists
+      next.delete('cursor')
+      const query = next.toString()
+      router.push(query ? `${pathname}?${query}` : pathname)
+    },
+    [router, pathname, params],
+  )
+}
 
 export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
   const { theme, toggle: toggleTheme } = useTheme()
@@ -190,9 +220,23 @@ function BusinessPicker() {
 }
 
 function OutletPicker() {
-  const outletId = useApp((s) => s.outletId)
+  const session = useSession()
+  const live = session.mode === 'live'
+  const setParam = useScopeParam()
+  const params = useSearchParams()
+
+  const storeOutletId = useApp((s) => s.outletId)
   const setOutlet = useApp((s) => s.setOutlet)
-  const current = outlets.find((outlet) => outlet.id === outletId)
+
+  const options = live ? session.outlets : outlets.map((o) => ({ id: o.id, name: o.name, city: o.city }))
+  const outletId = live ? (params?.get('outlet') ?? 'all') : storeOutletId
+  const current = options.find((outlet) => outlet.id === outletId)
+
+  const choose = (id: string | 'all') => {
+    if (live) setParam({ outlet: id === 'all' ? null : id })
+    else setOutlet(id)
+  }
+
   return (
     <Popover label="Select outlet" value={current ? current.name : 'All outlets'} className="hidden sm:block">
       {(close) => (
@@ -200,18 +244,18 @@ function OutletPicker() {
           <button
             className={itemClass(outletId === 'all')}
             onClick={() => {
-              setOutlet('all')
+              choose('all')
               close()
             }}
           >
             All outlets
           </button>
-          {outlets.map((outlet) => (
+          {options.map((outlet) => (
             <button
               key={outlet.id}
               className={itemClass(outletId === outlet.id)}
               onClick={() => {
-                setOutlet(outlet.id)
+                choose(outlet.id)
                 close()
               }}
             >
@@ -226,9 +270,32 @@ function OutletPicker() {
 }
 
 function RangePicker() {
-  const rangeKey = useApp((s) => s.rangeKey)
-  const customRange = useApp((s) => s.customRange)
+  const session = useSession()
+  const live = session.mode === 'live'
+  const setParam = useScopeParam()
+  const params = useSearchParams()
+
+  const storeRangeKey = useApp((s) => s.rangeKey)
+  const storeCustom = useApp((s) => s.customRange)
   const setRange = useApp((s) => s.setRange)
+
+  const rangeKey = live ? ((params?.get('range') as RangeKey | null) ?? '30d') : storeRangeKey
+  const customRange = live
+    ? { from: params?.get('from') ?? '', to: params?.get('to') ?? '' }
+    : storeCustom
+
+  const apply = (key: RangeKey, custom?: { from: string; to: string }) => {
+    if (live) {
+      setParam({
+        range: key === '30d' ? null : key,
+        from: custom?.from ?? null,
+        to: custom?.to ?? null,
+      })
+    } else {
+      setRange(key, custom)
+    }
+  }
+
   const [draft, setDraft] = useState(customRange)
   const label =
     rangeKey === 'custom' && customRange.from && customRange.to
@@ -244,7 +311,7 @@ function RangePicker() {
               key={option.key}
               className={itemClass(rangeKey === option.key)}
               onClick={() => {
-                setRange(option.key as RangeKey)
+                apply(option.key as RangeKey)
                 close()
               }}
             >
@@ -274,7 +341,7 @@ function RangePicker() {
               className="mt-2 w-full"
               disabled={!draft.from || !draft.to}
               onClick={() => {
-                setRange('custom', draft)
+                apply('custom', draft)
                 close()
               }}
             >

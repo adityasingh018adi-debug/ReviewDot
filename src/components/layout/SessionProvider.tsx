@@ -19,6 +19,8 @@ export type UiSession = {
   organization: { id: string; name: string } | null
   role: Role
   assignedOutletIds: string[]
+  /** Outlets this viewer can filter by. Empty in demo mode, which uses the seeded list. */
+  outlets: { id: string; name: string; city?: string | null }[]
 }
 
 const SessionContext = createContext<UiSession | null>(null)

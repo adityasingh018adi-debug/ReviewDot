@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { NotConfigured } from '@/components/layout/NotConfigured'
 import { initialsOf, type UiSession } from '@/components/layout/SessionProvider'
 import { getWorkspaceSession } from '@/services/auth.server'
+import { dashboardContext } from '@/services/dashboard-context.server'
 import { appMode } from '@/lib/app-mode'
 import { business } from '@/lib/data'
 
@@ -50,6 +51,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       organization: { id: business.id, name: business.name },
       role: 'OWNER',
       assignedOutletIds: [],
+      outlets: [],
     }
     return <AppLayout session={session}>{children}</AppLayout>
   }
@@ -59,6 +61,11 @@ export default async function Layout({ children }: { children: React.ReactNode }
 
   // Signed in but with no organization yet — finish signing up first.
   if (!workspace.active) redirect('/onboarding')
+
+  // The outlet picker needs real outlets, and only the ones this member can see
+  // — which is app_can_see_outlet's job, not the picker's.
+  const context = await dashboardContext()
+  const outlets = context ? await context.repo.outletOptions().catch(() => []) : []
 
   const fullName = workspace.user.fullName?.trim() || workspace.user.email
   const session: UiSession = {
@@ -75,6 +82,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
     },
     role: workspace.active.role,
     assignedOutletIds: workspace.active.assignedOutletIds,
+    outlets,
   }
 
   return <AppLayout session={session}>{children}</AppLayout>

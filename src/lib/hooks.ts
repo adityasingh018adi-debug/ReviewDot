@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 
 /** Subscribes to a media query without re-running state updates on every render. */

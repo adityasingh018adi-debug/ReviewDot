@@ -1,3 +1,5 @@
+'use client'
+
 import { useMemo } from 'react'
 import { encodeQR, qrPath } from '@/lib/qr'
 import { cn } from '@/lib/utils'
