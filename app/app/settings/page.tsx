@@ -12,9 +12,12 @@ export default async function Page() {
   if (!context) redirect('/login')
   if (context.mode !== 'live') return <Settings />
 
-  const [organization, team, workspace] = await Promise.all([
+  const [organization, team, invites, workspace] = await Promise.all([
     context.repo.organization(),
     context.repo.team(),
+    // invites_read already limits this to workspaces the caller administers, so
+    // a staff member gets an empty list rather than an error.
+    context.repo.invites(),
     getWorkspaceSession(),
   ])
 
@@ -22,6 +25,7 @@ export default async function Page() {
     <SettingsLive
       organization={organization}
       team={team}
+      invites={invites}
       currentUserId={workspace?.user.id ?? ''}
       canManageOrg={context.can('org:update')}
       canManageTeam={context.can('team:manage')}

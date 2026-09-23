@@ -17,6 +17,8 @@ export type UiSession = {
   mode: AppMode
   user: { id: string; email: string; fullName: string; initials: string }
   organization: { id: string; name: string } | null
+  /** Every workspace this account belongs to, for the switcher. */
+  organizations: { id: string; name: string }[]
   role: Role
   assignedOutletIds: string[]
   /** Outlets this viewer can filter by. Empty in demo mode, which uses the seeded list. */

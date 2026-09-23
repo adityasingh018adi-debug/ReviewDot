@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers'
 import { serverClient } from './supabase.server'
 import { isSupabaseConfigured } from './supabase'
 import type { AuthService, Membership, SessionUser } from './types'
@@ -19,6 +20,22 @@ export type WorkspaceSession = {
   /** The membership the dashboard is currently acting through. */
   active: Membership | null
 }
+
+/**
+ * Which workspace the dashboard is showing, when someone belongs to more than
+ * one.
+ *
+ * Someone who signs up and is then invited elsewhere belongs to two: their own
+ * and the one they were invited to. Picking memberships[0] always landed them
+ * in the older of the two — their own empty workspace — with no way out, which
+ * made an invitation useless even once it could be sent.
+ *
+ * The choice is a cookie rather than a column because it is a per-browser
+ * preference, not a fact about the account. A value naming an organization the
+ * caller is not a member of is ignored rather than trusted: the list it is
+ * matched against already came back through row level security.
+ */
+export const ACTIVE_ORG_COOKIE = 'reviewdot-org'
 
 export class SupabaseAuthService implements AuthService {
   async getUser(): Promise<SessionUser | null> {
@@ -91,5 +108,13 @@ export async function getWorkspaceSession(): Promise<WorkspaceSession | null> {
   if (!user) return null
 
   const memberships = await auth.getMemberships(user.id)
-  return { user, memberships, active: memberships[0] ?? null }
+
+  const store = await cookies()
+  const preferred = store.get(ACTIVE_ORG_COOKIE)?.value
+  const active =
+    memberships.find((membership) => membership.organizationId === preferred) ??
+    memberships[0] ??
+    null
+
+  return { user, memberships, active }
 }

@@ -49,6 +49,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
         initials: 'RS',
       },
       organization: { id: business.id, name: business.name },
+      organizations: [{ id: business.id, name: business.name }],
       role: 'OWNER',
       assignedOutletIds: [],
       outlets: [],
@@ -80,6 +81,10 @@ export default async function Layout({ children }: { children: React.ReactNode }
       id: workspace.active.organizationId,
       name: workspace.active.organizationName,
     },
+    organizations: workspace.memberships.map((membership) => ({
+      id: membership.organizationId,
+      name: membership.organizationName,
+    })),
     role: workspace.active.role,
     assignedOutletIds: workspace.active.assignedOutletIds,
     outlets,

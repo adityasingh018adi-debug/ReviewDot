@@ -12,6 +12,7 @@ import { useTheme } from '@/lib/theme'
 import { useClickOutside } from '@/lib/hooks'
 import { initialsOf, useSession } from './SessionProvider'
 import { signOutAction } from '@/app-actions/auth'
+import { switchOrganizationAction } from '@/app-actions/workspace'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/Field'
 import { Button } from '@/components/ui/Button'
@@ -186,13 +187,41 @@ const itemClass = (active: boolean) =>
     active ? 'bg-accent-soft font-medium text-accent' : 'text-ink-soft hover:bg-raised',
   )
 
+/**
+ * Which workspace the dashboard is showing.
+ *
+ * Someone who signed up and was then invited elsewhere belongs to two, and
+ * without this there was no way to reach the second one. Switching writes a
+ * cookie through switchOrganizationAction, which re-checks membership server
+ * side before it accepts the choice — the list below is what the UI offers, not
+ * what the server allows.
+ */
 function BusinessPicker() {
-  const { organization, mode } = useSession()
+  const { organization, organizations, mode } = useSession()
+  const router = useRouter()
+  const [pending, setPending] = useState(false)
 
   // The organization comes from the session, so a real account never sees the
   // demo business in its own workspace.
   const name = organization?.name ?? business.name
   const mark = mode === 'demo' ? business.mark : initialsOf(name, 'RD')
+
+  const switchTo = async (id: string, close: () => void) => {
+    setPending(true)
+    try {
+      const form = new FormData()
+      form.set('organizationId', id)
+      const result = await switchOrganizationAction(form)
+      if (!result.error) {
+        close()
+        // the scope in the query string belongs to the workspace we are leaving
+        router.push('/app')
+        router.refresh()
+      }
+    } finally {
+      setPending(false)
+    }
+  }
 
   return (
     <Popover
@@ -206,13 +235,38 @@ function BusinessPicker() {
     >
       {(close) => (
         <>
-          <button className={itemClass(true)} onClick={close}>
-            {name}
-            {mode === 'demo' ? <span className="text-[11px] text-faint">{business.plan}</span> : null}
-          </button>
-          <p className="px-3 py-2 text-[12px] text-faint">
-            Multi-brand workspaces are available on the Scale plan.
-          </p>
+          {mode === 'demo' ? (
+            <>
+              <button className={itemClass(true)} onClick={close}>
+                {name}
+                <span className="text-[11px] text-faint">{business.plan}</span>
+              </button>
+              <p className="px-3 py-2 text-[12px] text-faint">
+                Demo workspace — no account is signed in.
+              </p>
+            </>
+          ) : (
+            <>
+              {organizations.map((workspace) => (
+                <button
+                  key={workspace.id}
+                  disabled={pending}
+                  className={itemClass(workspace.id === organization?.id)}
+                  onClick={() => {
+                    if (workspace.id === organization?.id) close()
+                    else void switchTo(workspace.id, close)
+                  }}
+                >
+                  {workspace.name}
+                </button>
+              ))}
+              {organizations.length < 2 ? (
+                <p className="px-3 py-2 text-[12px] leading-relaxed text-faint">
+                  You belong to one workspace. You will see others here once you are invited to them.
+                </p>
+              ) : null}
+            </>
+          )}
         </>
       )}
     </Popover>

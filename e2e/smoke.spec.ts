@@ -166,6 +166,16 @@ test('unknown routes show the 404 page', async ({ page }) => {
   await expect(page.getByText('404')).toBeVisible()
 })
 
+test('an invitation link refuses rather than breaking when it means nothing', async ({ page }) => {
+  // The page is public — the person being invited usually has no account yet —
+  // so a token that resolves to nothing has to render a page, not an error. In
+  // demo mode there is no database to resolve one against, which is the same
+  // path a stale or withdrawn token takes.
+  const response = await page.goto('/join/not-a-real-token')
+  expect(response?.status()).toBe(200)
+  await expect(page.getByRole('heading', { name: /no longer valid/i })).toBeVisible()
+})
+
 test.describe('authentication', () => {
   test('the sign-in screen offers the real ways in', async ({ page }) => {
     await page.goto('/login')

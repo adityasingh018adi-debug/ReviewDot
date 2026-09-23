@@ -42,13 +42,18 @@ export async function signUpAction(form: FormData): Promise<AuthResult> {
   const invalid = validate(email, password)
   if (invalid) return { error: invalid }
 
+  // Where to land afterwards. Onboarding for someone starting a business of
+  // their own; the invitation they came from, if they came from one. Anything
+  // that would leave the site is refused by safeNextPath.
+  const next = safeNextPath(field(form, 'next'), '/onboarding')
+
   const supabase = await serverClient()
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: fullName ? { full_name: fullName } : undefined,
-      emailRedirectTo: absoluteUrl('/auth/callback?next=/onboarding'),
+      emailRedirectTo: absoluteUrl(`/auth/callback?next=${encodeURIComponent(next)}`),
     },
   })
 
@@ -56,7 +61,7 @@ export async function signUpAction(form: FormData): Promise<AuthResult> {
 
   // A confirmed session means email confirmation is off; otherwise they have
   // mail waiting. The profile row is created by the database trigger either way.
-  if (data.session) redirect('/onboarding')
+  if (data.session) redirect(next)
 
   return { notice: 'Check your email for a link to confirm your address.' }
 }

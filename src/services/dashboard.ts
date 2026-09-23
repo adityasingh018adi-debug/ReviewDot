@@ -109,6 +109,14 @@ export type TeamMember = {
   assignedOutletIds: string[]
 }
 
+export type PendingInvite = {
+  id: string
+  email: string
+  role: string
+  createdAt: string
+  expiresAt: string
+}
+
 export type OrganizationDetail = {
   id: string
   name: string
@@ -183,6 +191,7 @@ export interface DashboardRepo {
   reviews(scope: DashboardScope, filter?: FeedbackFilter): Promise<Page<ReviewItem>>
   products(scope: DashboardScope): Promise<ProductRow[]>
   team(): Promise<TeamMember[]>
+  invites(): Promise<PendingInvite[]>
   organization(): Promise<OrganizationDetail | null>
 }
 

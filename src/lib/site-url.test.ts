@@ -13,6 +13,14 @@ describe('safeNextPath', () => {
     expect(safeNextPath('')).toBe('/app')
   })
 
+  it('honours a caller-supplied fallback', () => {
+    // signup sends someone to onboarding by default, but to the invitation they
+    // came from when there is one — and to onboarding, not /app, when there is not
+    expect(safeNextPath(null, '/onboarding')).toBe('/onboarding')
+    expect(safeNextPath('https://evil.example', '/onboarding')).toBe('/onboarding')
+    expect(safeNextPath('/join/abc', '/onboarding')).toBe('/join/abc')
+  })
+
   it('refuses anything that would leave the site', () => {
     for (const hostile of [
       'https://evil.example',

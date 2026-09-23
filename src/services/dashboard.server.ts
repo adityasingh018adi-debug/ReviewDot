@@ -13,6 +13,7 @@ import {
   type CustomerRow,
   type Funnel,
   type OrganizationDetail,
+  type PendingInvite,
   type OutletDetail,
   type OutletOption,
   type ProductRow,
@@ -620,5 +621,29 @@ export class SupabaseDashboardRepo implements DashboardRepo {
       planName: row.subscriptions?.plans?.name ?? null,
       subscriptionStatus: row.subscriptions?.status ?? null,
     }
+  }
+
+  async invites(): Promise<PendingInvite[]> {
+    const supabase = await serverClient()
+    // invites_read limits this to organizations the caller administers, so a
+    // staff member gets an empty list rather than a refusal.
+    const { data, error } = await supabase
+      .from('organization_invites')
+      .select('id, email, role, created_at, expires_at')
+      .is('accepted_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+
+    return (
+      (data ?? []) as { id: string; email: string; role: string; created_at: string; expires_at: string }[]
+    ).map((row) => ({
+      id: row.id,
+      email: row.email,
+      role: row.role,
+      createdAt: row.created_at,
+      expiresAt: row.expires_at,
+    }))
   }
 }

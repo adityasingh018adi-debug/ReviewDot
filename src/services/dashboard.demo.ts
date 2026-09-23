@@ -30,6 +30,7 @@ import {
   type CustomerRow,
   type Funnel,
   type OrganizationDetail,
+  type PendingInvite,
   type OutletDetail,
   type OutletOption,
   type ProductRow,
@@ -298,5 +299,10 @@ export class DemoDashboardRepo implements DashboardRepo {
       planName: business.plan,
       subscriptionStatus: 'active',
     }
+  }
+
+  async invites(): Promise<PendingInvite[]> {
+    // Nothing is pending in a workspace nobody can be invited to.
+    return []
   }
 }

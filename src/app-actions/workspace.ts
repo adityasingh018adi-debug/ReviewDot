@@ -1,8 +1,9 @@
 'use server'
 
+import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { serverClient } from '@/services/supabase.server'
-import { getWorkspaceSession } from '@/services/auth.server'
+import { ACTIVE_ORG_COOKIE, getWorkspaceSession } from '@/services/auth.server'
 import { isSupabaseConfigured } from '@/services/supabase'
 import { generatePublicId, referenceCode, shortCodeFor } from '@/lib/qr-identity'
 import { reportError } from '@/lib/observability'
@@ -435,5 +436,120 @@ export async function removeMemberAction(form: FormData): Promise<ActionResult> 
   }
 
   revalidatePath('/app', 'layout')
+  return { ok: true }
+}
+
+/* ------------------------------------------------------------------ team */
+
+export type InviteResult = ActionResult & { token?: string }
+
+/**
+ * Invites someone by email and returns a link to send them.
+ *
+ * The link is returned rather than emailed: there is no mail integration yet,
+ * and a product that silently fails to deliver an invitation is worse than one
+ * that hands you the link and says so.
+ */
+export async function createInviteAction(form: FormData): Promise<InviteResult> {
+  const active = await workspace()
+  if (!active) return NOT_LIVE
+
+  const email = field(form, 'email')
+  const role = field(form, 'role') || 'STAFF'
+  if (!email) return { error: 'Enter an email address.' }
+  if (!ROLES.includes(role)) return { error: 'Choose a role.' }
+
+  const supabase = await serverClient()
+  const { data, error } = await supabase.rpc('app_create_invite', {
+    p_org: active.organizationId,
+    p_email: email,
+    p_role: role,
+  })
+
+  if (error) {
+    // The function raises with codes chosen so the reason survives the trip.
+    if (error.code === '42501') return { error: 'Only an owner or admin can invite people.' }
+    if (error.code === '23505') return { error: 'That person is already in this workspace.' }
+    if (error.code === '22023') return { error: 'That is not a valid email address.' }
+    if (error.code === '53400') return { error: error.message }
+    reportError('outlet.write', error.message, { code: error.code })
+    return { error: 'Could not create that invitation.' }
+  }
+
+  revalidatePath('/app', 'layout')
+  return { ok: true, token: String(data) }
+}
+
+export async function revokeInviteAction(form: FormData): Promise<ActionResult> {
+  const active = await workspace()
+  if (!active) return NOT_LIVE
+
+  const id = field(form, 'id')
+  if (!id) return { error: 'Missing invitation.' }
+
+  const supabase = await serverClient()
+  const { error } = await supabase.from('organization_invites').delete().eq('id', id)
+  if (error) {
+    reportError('outlet.write', error.message, { code: error.code })
+    return { error: 'Could not withdraw that invitation.' }
+  }
+
+  revalidatePath('/app', 'layout')
+  return { ok: true }
+}
+
+/** Joins the workspace an invitation names, then switches to it. */
+export async function acceptInviteAction(token: string): Promise<ActionResult> {
+  if (!isSupabaseConfigured()) return NOT_LIVE
+  if (!token) return { error: 'That invitation link is not valid.' }
+
+  const supabase = await serverClient()
+  const { data, error } = await supabase.rpc('app_accept_invite', { p_token: token })
+
+  if (error) {
+    if (error.code === '42501') return { error: 'This invitation was sent to a different address.' }
+    if (error.code === 'P0002') return { error: 'That invitation link is not valid.' }
+    if (error.code === '22023') return { error: error.message }
+    reportError('outlet.write', error.message, { code: error.code })
+    return { error: 'Could not accept that invitation.' }
+  }
+
+  // Land them in the workspace they just joined rather than whichever one is
+  // oldest — being invited somewhere and arriving elsewhere is not an invitation.
+  const store = await cookies()
+  store.set(ACTIVE_ORG_COOKIE, String(data), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+  })
+
+  revalidatePath('/', 'layout')
+  return { ok: true }
+}
+
+/** Switches which workspace the dashboard shows. */
+export async function switchOrganizationAction(form: FormData): Promise<ActionResult> {
+  const organizationId = field(form, 'organizationId')
+  if (!organizationId) return { error: 'Missing workspace.' }
+
+  // Only somewhere the caller is actually a member. The list comes back through
+  // row level security, so membership is the database's answer, not ours.
+  const session = await getWorkspaceSession()
+  if (!session?.memberships.some((m) => m.organizationId === organizationId)) {
+    return { error: 'That workspace is not available.' }
+  }
+
+  const store = await cookies()
+  store.set(ACTIVE_ORG_COOKIE, organizationId, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+  })
+
+  revalidatePath('/', 'layout')
   return { ok: true }
 }

@@ -245,7 +245,10 @@ export function Signup({ mode, next }: Props) {
   const footer = (
     <>
       Already have an account?{' '}
-      <Link href="/login" className="font-medium text-accent hover:underline">
+      <Link
+        href={next && next !== '/onboarding' ? `/login?next=${encodeURIComponent(next)}` : '/login'}
+        className="font-medium text-accent hover:underline"
+      >
         Log in
       </Link>
     </>
@@ -296,6 +299,9 @@ export function Signup({ mode, next }: Props) {
       <GoogleButton next={next ?? '/onboarding'} />
       <Divider />
       <form className="space-y-4" onSubmit={onSubmit}>
+        {/* Someone arriving from an invitation joins a workspace that already
+            exists, so they must not be sent to onboarding to create another. */}
+        <input type="hidden" name="next" value={next ?? '/onboarding'} />
         <Field label="Your name">
           <Input name="fullName" autoComplete="name" required />
         </Field>

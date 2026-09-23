@@ -15,6 +15,7 @@ migrations/0008_role_alignment.sql  write policies matched to the role matrix
 migrations/0009_analytics.sql       tags, funnel and customer aggregates
 migrations/0010_products.sql        per-product feedback counts
 migrations/0011_limits.sql          durable rate limiting, usage metering
+migrations/0012_team.sql            colleague profiles, invitations, grants
 migrate.sh                   the runner: applies each migration once, tracked
 tests/rls_test.sql           isolation tests; every check raises on failure
 tests/auth_test.sql          signup trigger and onboarding
@@ -22,6 +23,7 @@ tests/policy_test.sql        roles, response scope, triage scope, erasure
 tests/flow_test.sql          the customer journey, end to end
 tests/reporting_test.sql     dashboard aggregates, and their isolation
 tests/limits_test.sql        rate limiting and usage metering
+tests/team_test.sql          colleague visibility, invitations, seat limits
 ```
 
 ## Applying
@@ -61,8 +63,8 @@ real Supabase project.
 npm run db:test    # runs every file in tests/, in order
 ```
 
-196 checks in total — 23 isolation, 29 auth, 47 policy, 23 flow, 50 reporting,
-24 limits.
+220 checks in total — 23 isolation, 29 auth, 47 policy, 23 flow, 50 reporting,
+24 limits, 24 team.
 Every suite runs inside a transaction and rolls back, so they are safe against a
 development database.
 
@@ -213,3 +215,45 @@ increments atomically for the current month.
 time something is deleted and then either blocks a customer who is under their
 limit or lets one sail past it. Archiving an outlet frees the allowance
 immediately, and there is a test for exactly that.
+
+## Team (0012)
+
+Two things that made the team feature look finished while it was not.
+
+**Colleagues were invisible to each other.** `profiles` had one SELECT policy,
+`profiles_self` — your own row and nothing else. The team list joins members to
+profiles for a name and an email, so every organization saw one member (the
+person looking) and a list of blanks. RLS ORs its SELECT policies, so the fix is
+an additional policy rather than a wider one: `profiles_colleagues` allows a row
+whose owner shares an organization with the caller. `app_shares_organization()`
+is `security definer` so it can read `organization_members` without recursing
+through the policy being evaluated, and its `search_path` is pinned.
+
+**There was no way to add anyone.** `organizations` has no insert policy on
+purpose and `organization_members` has no self-insert, so a second person could
+sign up and then belong to nothing. `organization_invites` plus three functions
+close that:
+
+- `app_create_invite()` is `security definer` and checks everything explicitly —
+  the caller is an OWNER or ADMIN of the organization they name, the address
+  parses, that person is not already a member, and the seat allowance covers one
+  more. Outstanding invitations count against the allowance, or a workspace on
+  two seats could issue twenty links and let them all through.
+- `app_accept_invite()` matches the token against the caller's **own**
+  `profiles.email`, not against an address in the request. That is what makes
+  the link safe to hand over in a chat message: forwarding it to someone else
+  gets them a page and no membership.
+- `app_invite_preview()` is granted to `anon`, because the person being invited
+  usually has no account yet and needs to see which workspace this is before
+  signing up. It returns the workspace name, the invited address and the role —
+  nothing that is not already in the message they were sent.
+
+Re-inviting the same address replaces the previous token rather than issuing a
+second one (`on conflict (organization_id, email)`), so a link that was sent to
+the wrong place stops working as soon as a new one is made. A test pins that.
+
+**Service-role grants.** 0011 revoked `app_rate_limit`, `app_prune_rate_limits`
+and `app_record_usage` from `PUBLIC`. On Supabase that leaves `service_role`
+working, because its default privileges grant execute explicitly; on a plain
+Postgres it leaves the durable rate limiter and the usage meter failing into
+their fallbacks, silently. 0012 grants those three to `service_role` by name.

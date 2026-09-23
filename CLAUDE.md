@@ -39,6 +39,17 @@ Next.js 15 (App Router) · React 18 · TypeScript · Tailwind v4 · Supabase · 
 - `profiles` is filled by an `on auth.users` trigger and onboarding goes through
   `app_create_organization()` (both in `0004_auth.sql`). `organizations` has no
   insert policy on purpose; that function is the only way in.
+- A *second* person joins through an invitation, not through onboarding
+  (`0012_team.sql`). `app_accept_invite()` matches the token against the
+  caller's own `profiles.email`, so the link is safe to send over chat — the
+  address in the request is never what authorizes the join. `/join/{token}` is
+  public because the invitee usually has no account yet; it shows only what
+  `app_invite_preview()` returns. There is no mail integration, so Settings
+  surfaces the link to be sent by hand.
+- Which workspace the dashboard shows is a cookie (`ACTIVE_ORG_COOKIE`), matched
+  against the memberships RLS returned. Someone who signed up and was then
+  invited elsewhere belongs to two, and `memberships[0]` always stranded them in
+  the older one.
 - Dashboard routes are `force-dynamic`. They render per user, and their figures
   are relative to today — prerendered HTML stops matching the client the moment
   the date rolls over, which makes React discard the whole server tree.
@@ -189,5 +200,5 @@ npm run lint
 npm test           # Vitest
 npm run test:e2e   # Playwright (builds and starts the app itself)
 npm run db:migrate # apply outstanding migrations (tracked, once each)
-npm run db:test    # 196 database checks: isolation, auth, policy, flow, reporting, limits
+npm run db:test    # 220 database checks: isolation, auth, policy, flow, reporting, limits, team
 ```
