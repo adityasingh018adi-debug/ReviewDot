@@ -10,12 +10,16 @@ import {
   type FeedbackItem,
   type OutletRow,
   type CampaignRow,
+  type CustomerRow,
+  type Funnel,
   type OutletDetail,
   type OutletOption,
   type OverviewStats,
   type Page,
   type RatingBucket,
+  type ReviewItem,
   type SeriesPoint,
+  type TagRow,
 } from './dashboard'
 
 /**
@@ -358,5 +362,159 @@ export class SupabaseDashboardRepo implements DashboardRepo {
         clicks: int(stats?.clicks),
       }
     })
+  }
+
+  async tags(scope: DashboardScope): Promise<TagRow[]> {
+    const supabase = await serverClient()
+    const { data, error } = await supabase.rpc('app_tag_breakdown', {
+      p_org: this.organizationId,
+      p_from: scope.range.from.toISOString(),
+      p_to: scope.range.to.toISOString(),
+      p_outlet: scope.outletId,
+    })
+    if (error) throw error
+
+    return (
+      (data ?? []) as {
+        tag: string
+        mentions: number | string
+        positive: number | string
+        avg_rating: number | string | null
+      }[]
+    ).map((row) => ({
+      tag: row.tag,
+      mentions: int(row.mentions),
+      positive: int(row.positive),
+      avgRating: nullableFloat(row.avg_rating),
+    }))
+  }
+
+  async funnel(scope: DashboardScope): Promise<Funnel> {
+    const supabase = await serverClient()
+    const { data, error } = await supabase.rpc('app_funnel', {
+      p_org: this.organizationId,
+      p_from: scope.range.from.toISOString(),
+      p_to: scope.range.to.toISOString(),
+      p_outlet: scope.outletId,
+    })
+    if (error) throw error
+
+    const row = (Array.isArray(data) ? data[0] : data) as Record<string, number | string> | undefined
+    return {
+      scans: int(row?.scans),
+      sessions: int(row?.sessions),
+      feedback: int(row?.feedback),
+      drafts: int(row?.drafts),
+      approved: int(row?.approved),
+      clicks: int(row?.clicks),
+    }
+  }
+
+  async customers(scope: DashboardScope): Promise<CustomerRow[]> {
+    const supabase = await serverClient()
+    const { data, error } = await supabase.rpc('app_customers', {
+      p_org: this.organizationId,
+      p_from: scope.range.from.toISOString(),
+      p_to: scope.range.to.toISOString(),
+      p_outlet: scope.outletId,
+    })
+    if (error) throw error
+
+    return (
+      (data ?? []) as {
+        contact: string
+        name: string | null
+        visits: number | string
+        avg_rating: number | string | null
+        last_seen: string
+      }[]
+    ).map((row) => ({
+      contact: row.contact,
+      name: row.name,
+      visits: int(row.visits),
+      avgRating: nullableFloat(row.avg_rating),
+      lastSeen: row.last_seen,
+    }))
+  }
+
+  async reviews(scope: DashboardScope, filter: FeedbackFilter = {}): Promise<Page<ReviewItem>> {
+    const supabase = await serverClient()
+    const limit = Math.min(Math.max(filter.limit ?? PAGE_SIZE, 1), 100)
+
+    // !inner on review_events is the definition of "became a public review":
+    // the customer chose a destination and clicked through. Feedback that never
+    // reached one belongs on the feedback page, not in this inbox.
+    let query = supabase
+      .from('customer_feedback')
+      .select(
+        `id, created_at, rating, comment, tags, sentiment, status,
+         outlets (name), products (name),
+         ai_review_drafts (final_text, draft_text, edited_by_customer, approved_at),
+         review_events!inner (destination, clicked_at)`,
+      )
+      .eq('organization_id', this.organizationId)
+      .gte('created_at', scope.range.from.toISOString())
+      .lte('created_at', scope.range.to.toISOString())
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(limit + 1)
+
+    if (scope.outletId) query = query.eq('outlet_id', scope.outletId)
+
+    const cursor = decodeCursor(filter.cursor)
+    if (cursor) {
+      query = query.or(
+        `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`,
+      )
+    }
+
+    const { data, error } = await query
+    if (error) throw error
+
+    const rows = (data ?? []) as unknown as {
+      id: string
+      created_at: string
+      rating: number
+      comment: string | null
+      tags: string[] | null
+      sentiment: ReviewItem['sentiment']
+      status: ReviewItem['status']
+      outlets: { name: string } | null
+      products: { name: string } | null
+      ai_review_drafts: {
+        final_text: string | null
+        draft_text: string
+        edited_by_customer: boolean
+        approved_at: string | null
+      }[]
+      review_events: { destination: string; clicked_at: string }[]
+    }[]
+
+    const hasMore = rows.length > limit
+    const page = hasMore ? rows.slice(0, limit) : rows
+    const last = page[page.length - 1]
+
+    return {
+      items: page.map((row) => {
+        const draft = row.ai_review_drafts?.[0]
+        const event = row.review_events?.[0]
+        return {
+          id: row.id,
+          createdAt: row.created_at,
+          rating: row.rating,
+          comment: row.comment,
+          tags: row.tags ?? [],
+          sentiment: row.sentiment,
+          status: row.status,
+          outletName: row.outlets?.name ?? null,
+          productName: row.products?.name ?? null,
+          finalText: draft?.final_text ?? draft?.draft_text ?? null,
+          editedByCustomer: Boolean(draft?.edited_by_customer),
+          destination: event?.destination ?? null,
+          postedAt: event?.clicked_at ?? null,
+        }
+      }),
+      nextCursor: hasMore && last ? encodeCursor(last.created_at, last.id) : null,
+    }
   }
 }

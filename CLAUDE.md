@@ -159,5 +159,5 @@ npm run lint
 npm test           # Vitest
 npm run test:e2e   # Playwright (builds and starts the app itself)
 npm run db:migrate # apply outstanding migrations (tracked, once each)
-npm run db:test    # 152 database checks: isolation, auth, policy, flow, reporting
+npm run db:test    # 167 database checks: isolation, auth, policy, flow, reporting
 ```

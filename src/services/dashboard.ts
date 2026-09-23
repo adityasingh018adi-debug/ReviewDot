@@ -89,6 +89,36 @@ export type FeedbackItem = {
   productName: string | null
 }
 
+export type TagRow = { tag: string; mentions: number; positive: number; avgRating: number | null }
+
+/** Where the journey loses people, step by step. */
+export type Funnel = {
+  scans: number
+  sessions: number
+  feedback: number
+  drafts: number
+  approved: number
+  clicks: number
+}
+
+export type CustomerRow = {
+  /** Email if they gave one, otherwise phone. Never both — it is the grouping key. */
+  contact: string
+  name: string | null
+  visits: number
+  avgRating: number | null
+  lastSeen: string
+}
+
+/** Feedback that became a public review: the customer approved a draft and clicked through. */
+export type ReviewItem = FeedbackItem & {
+  /** What the customer settled on, which may differ from what the model wrote. */
+  finalText: string | null
+  editedByCustomer: boolean
+  destination: string | null
+  postedAt: string | null
+}
+
 /** Keyset, not offset: page two stays correct while page one keeps growing. */
 export type Page<T> = { items: T[]; nextCursor: string | null }
 
@@ -112,6 +142,10 @@ export interface DashboardRepo {
   feedback(scope: DashboardScope, filter?: FeedbackFilter): Promise<Page<FeedbackItem>>
   outletsDetail(scope: DashboardScope): Promise<OutletDetail[]>
   campaigns(scope: DashboardScope): Promise<CampaignRow[]>
+  tags(scope: DashboardScope): Promise<TagRow[]>
+  funnel(scope: DashboardScope): Promise<Funnel>
+  customers(scope: DashboardScope): Promise<CustomerRow[]>
+  reviews(scope: DashboardScope, filter?: FeedbackFilter): Promise<Page<ReviewItem>>
 }
 
 export const PAGE_SIZE = 25

@@ -12,6 +12,7 @@ migrations/0005_hardening.sql indexes, policy scope, erasure
 migrations/0006_reporting.sql dashboard aggregation, in the database
 migrations/0007_campaign_reporting.sql per-campaign scan and feedback counts
 migrations/0008_role_alignment.sql  write policies matched to the role matrix
+migrations/0009_analytics.sql       tags, funnel and customer aggregates
 migrate.sh                   the runner: applies each migration once, tracked
 tests/rls_test.sql           isolation tests; every check raises on failure
 tests/auth_test.sql          signup trigger and onboarding
@@ -57,7 +58,7 @@ real Supabase project.
 npm run db:test    # runs every file in tests/, in order
 ```
 
-152 checks in total — 23 isolation, 29 auth, 47 policy, 23 flow, 30 reporting.
+167 checks in total — 23 isolation, 29 auth, 47 policy, 23 flow, 45 reporting.
 Every suite runs inside a transaction and rolls back, so they are safe against a
 development database.
 

@@ -113,3 +113,39 @@ describe('DemoDashboardRepo — outlets and campaigns', () => {
     expect(one.every((campaign) => campaign.outletId === first!.id)).toBe(true)
   })
 })
+
+describe('DemoDashboardRepo — analytics', () => {
+  const repo = new DemoDashboardRepo()
+  const scope = scopeFromParams({ range: '30d' })
+
+  it('ranks tags by how often customers mention them', async () => {
+    const tags = await repo.tags(scope)
+    expect(tags.length).toBeGreaterThan(3)
+    for (let i = 1; i < tags.length; i += 1) {
+      expect(tags[i - 1]!.mentions).toBeGreaterThanOrEqual(tags[i]!.mentions)
+    }
+    expect(tags.every((tag) => tag.positive <= tag.mentions)).toBe(true)
+  })
+
+  it('reports a funnel that only narrows', async () => {
+    const funnel = await repo.funnel(scope)
+    expect(funnel.scans).toBe(1248)
+    expect(funnel.feedback).toBeLessThanOrEqual(funnel.scans)
+    expect(funnel.clicks).toBeLessThanOrEqual(funnel.feedback)
+  })
+
+  it('lists customers who left contact details', async () => {
+    const customers = await repo.customers(scope)
+    expect(customers.length).toBeGreaterThan(0)
+    expect(customers.every((customer) => customer.contact)).toBe(true)
+    // newest first
+    const seen = customers.map((customer) => customer.lastSeen)
+    expect([...seen].sort().reverse()).toEqual(seen)
+  })
+
+  it('returns reviews with the text the customer settled on', async () => {
+    const page = await repo.reviews(scope)
+    expect(page.items.length).toBeGreaterThan(0)
+    expect(page.items.every((item) => typeof item.editedByCustomer === 'boolean')).toBe(true)
+  })
+})

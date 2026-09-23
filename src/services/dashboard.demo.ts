@@ -1,6 +1,13 @@
 import { byOutlet, entriesIn, overview, ratingDistribution, seriesFor, type Scope } from '@/lib/metrics'
 import { baseData } from '@/lib/metrics'
-import { outletById, outlets as demoOutlets, productById, qrCodes as demoQRCodes } from '@/lib/data'
+import {
+  customers as demoCustomers,
+  isPositiveTag,
+  outletById,
+  outlets as demoOutlets,
+  productById,
+  qrCodes as demoQRCodes,
+} from '@/lib/data'
 import type { DashboardScope } from './scope'
 import {
   PAGE_SIZE,
@@ -11,12 +18,16 @@ import {
   type FeedbackItem,
   type OutletRow,
   type CampaignRow,
+  type CustomerRow,
+  type Funnel,
   type OutletDetail,
   type OutletOption,
   type OverviewStats,
   type Page,
   type RatingBucket,
+  type ReviewItem,
   type SeriesPoint,
+  type TagRow,
 } from './dashboard'
 
 /**
@@ -156,5 +167,80 @@ export class DemoDashboardRepo implements DashboardRepo {
         reviews: 0,
         clicks: 0,
       }))
+  }
+
+  async tags(scope: DashboardScope): Promise<TagRow[]> {
+    const entries = entriesIn(this.toMetricsScope(scope), baseData)
+    const counts = new Map<string, { mentions: number; positive: number; total: number }>()
+
+    for (const entry of entries) {
+      for (const tag of entry.tags) {
+        const row = counts.get(tag) ?? { mentions: 0, positive: 0, total: 0 }
+        row.mentions += 1
+        if (isPositiveTag(tag)) row.positive += 1
+        row.total += entry.rating
+        counts.set(tag, row)
+      }
+    }
+
+    return [...counts.entries()]
+      .map(([tag, row]) => ({
+        tag,
+        mentions: row.mentions,
+        positive: row.positive,
+        avgRating: row.mentions ? row.total / row.mentions : null,
+      }))
+      .sort((a, b) => b.mentions - a.mentions || a.tag.localeCompare(b.tag))
+  }
+
+  async funnel(scope: DashboardScope): Promise<Funnel> {
+    const stats = await this.overview(scope)
+    // The seeded dataset has no sessions or drafts of its own, so those steps
+    // are derived rather than invented: every piece of feedback came from a
+    // session and produced a draft.
+    return {
+      scans: stats.scans,
+      sessions: stats.scans,
+      feedback: stats.reviews,
+      drafts: stats.reviews,
+      approved: stats.reviews,
+      clicks: stats.googleClicks,
+    }
+  }
+
+  async customers(scope: DashboardScope): Promise<CustomerRow[]> {
+    // Seeded feedback carries a customerId rather than contact details, so the
+    // grouping the live version does in SQL is a join here.
+    const seen = new Set(
+      entriesIn(this.toMetricsScope(scope), baseData)
+        .map((entry) => entry.customerId)
+        .filter((id): id is string => Boolean(id)),
+    )
+
+    return demoCustomers
+      .filter((customer) => seen.has(customer.id))
+      .map((customer) => ({
+        contact: customer.contact,
+        name: customer.name,
+        visits: customer.visits,
+        avgRating: customer.avgRating,
+        lastSeen: customer.lastSeen,
+      }))
+      .sort((a, b) => b.lastSeen.localeCompare(a.lastSeen))
+      .slice(0, 100)
+  }
+
+  async reviews(scope: DashboardScope, filter: FeedbackFilter = {}): Promise<Page<ReviewItem>> {
+    const page = await this.feedback(scope, filter)
+    return {
+      items: page.items.map((item) => ({
+        ...item,
+        finalText: item.comment,
+        editedByCustomer: false,
+        destination: 'google',
+        postedAt: item.createdAt,
+      })),
+      nextCursor: page.nextCursor,
+    }
   }
 }

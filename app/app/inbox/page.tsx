@@ -1,14 +1,35 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import { Reviews } from '@/views/app/Reviews'
-import { SeededNotice } from '@/components/layout/SeededNotice'
+import { InboxLive } from '@/views/app/InboxLive'
+import { dashboardContext } from '@/services/dashboard-context.server'
+import { scopeFromParams, type ScopeParams } from '@/services/scope'
 
 export const metadata: Metadata = { title: 'Review inbox' }
 
-export default function Page() {
+type Params = ScopeParams & { cursor?: string }
+
+export default async function Page({ searchParams }: { searchParams: Promise<Params> }) {
+  const context = await dashboardContext()
+  if (!context) redirect('/login')
+  if (context.mode !== 'live') return <Reviews />
+
+  const params = await searchParams
+  const scope = scopeFromParams(params)
+  const page = await context.repo.reviews(scope, {
+    cursor: typeof params.cursor === 'string' ? params.cursor : null,
+  })
+
+  const baseQuery: Record<string, string> = {}
+  if (scope.rangeKey !== '30d') baseQuery.range = scope.rangeKey
+  if (scope.outletId) baseQuery.outlet = scope.outletId
+
   return (
-    <div className="space-y-4">
-      <SeededNotice />
-      <Reviews />
-    </div>
+    <InboxLive
+      rangeLabel={scope.range.label}
+      outletLabel={scope.outletId ? 'one outlet' : 'all outlets'}
+      page={page}
+      baseQuery={baseQuery}
+    />
   )
 }

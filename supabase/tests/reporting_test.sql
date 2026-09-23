@@ -66,6 +66,19 @@ insert into customer_feedback (organization_id, outlet_id, campaign_id, rating, 
   ('c1000000-0000-0000-0000-00000000000a','c2000000-0000-0000-0000-00000000000a','c3000000-0000-0000-0000-00000000000a',4,'good','positive', now() - interval '4 hours'),
   ('c1000000-0000-0000-0000-00000000000a','c2000000-0000-0000-0000-00000000000a','c3000000-0000-0000-0000-00000000000a',2,'poor','negative', now() - interval '5 hours');
 
+update customer_feedback set tags = '{Coffee,Service}'
+ where organization_id = 'c1000000-0000-0000-0000-00000000000a' and rating = 5;
+update customer_feedback set tags = '{Coffee}', contact_email = 'regular@example.com', contact_name = 'Priya'
+ where organization_id = 'c1000000-0000-0000-0000-00000000000a' and rating = 4;
+update customer_feedback set tags = '{Waiting time}', contact_phone = '+919000000001'
+ where organization_id = 'c1000000-0000-0000-0000-00000000000a' and rating = 2;
+update customer_feedback set contact_email = 'other-org@example.com'
+ where organization_id = 'c1000000-0000-0000-0000-00000000000b';
+
+insert into customer_sessions (organization_id, outlet_id, campaign_id) values
+  ('c1000000-0000-0000-0000-00000000000a','c2000000-0000-0000-0000-00000000000a','c3000000-0000-0000-0000-00000000000a'),
+  ('c1000000-0000-0000-0000-00000000000a','c2000000-0000-0000-0000-00000000000a','c3000000-0000-0000-0000-00000000000a');
+
 insert into review_events (organization_id, outlet_id, campaign_id, destination, clicked_at) values
   ('c1000000-0000-0000-0000-00000000000a','c2000000-0000-0000-0000-00000000000a','c3000000-0000-0000-0000-00000000000a','google', now() - interval '2 hours'),
   ('c1000000-0000-0000-0000-00000000000a','c2000000-0000-0000-0000-00000000000a','c3000000-0000-0000-0000-00000000000a','google', now() - interval '3 hours');
@@ -209,6 +222,68 @@ select assert(
   'an outlet manager''s campaign breakdown covers only their outlet');
 set local request.jwt.claim.sub = 'c0000000-0000-0000-0000-00000000000a';
 
+-- ---------------------------------------------------------------- tags
+
+select assert(
+  (select mentions from app_tag_breakdown('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now()) where tag = 'Coffee') = 3,
+  'the tag breakdown counts mentions across feedback');
+
+select assert(
+  (select positive from app_tag_breakdown('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now()) where tag = 'Waiting time') = 0,
+  'and separates the ones that came with negative feedback');
+
+select assert(
+  (select tag from app_tag_breakdown('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now()) limit 1) = 'Coffee',
+  'the most mentioned tag comes first');
+
+select assert(
+  (select count(*) from app_tag_breakdown('c1000000-0000-0000-0000-00000000000b',
+     now() - interval '2 days', now())) = 0,
+  'another organization''s tags are not visible');
+
+-- ---------------------------------------------------------------- funnel
+
+select * from app_funnel('c1000000-0000-0000-0000-00000000000a', now() - interval '2 days', now()) \gset fn_
+
+select assert(:fn_scans = 15, 'the funnel starts from scans');
+select assert(:fn_sessions = 2, 'and counts the sessions that opened');
+select assert(:fn_feedback = 5, 'and the feedback left');
+select assert(:fn_clicks = 2, 'and the customers who went to post');
+select assert(:fn_drafts = 0, 'a step with nothing in it reports zero rather than being omitted');
+
+select assert(
+  (select scans from app_funnel('c1000000-0000-0000-0000-00000000000b', now() - interval '2 days', now())) = 0,
+  'another organization''s funnel is empty');
+
+-- ---------------------------------------------------------------- customers
+
+select assert(
+  (select count(*) from app_customers('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now())) = 2,
+  'customers are grouped by the contact they left');
+
+select assert(
+  (select name from app_customers('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now()) where contact = 'regular@example.com') = 'Priya',
+  'and keep the name they gave');
+
+select assert(
+  (select count(*) from app_customers('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now()) where contact = 'other-org@example.com') = 0,
+  'another organization''s customers never appear');
+
+-- erasing a contact removes them from the list, which is the point of erasing
+select app_erase_feedback_contact(
+  (select id from customer_feedback
+    where contact_email = 'regular@example.com' limit 1));
+select assert(
+  (select count(*) from app_customers('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now())) = 1,
+  'an erased customer drops out of the customer list');
+
 -- ---------------------------------------------------------------- anon
 
 set local role anon;
@@ -226,6 +301,13 @@ do $$ begin
   raise exception 'FAILED: anonymous read a campaign breakdown';
 exception when insufficient_privilege then
   raise notice 'ok  anonymous may not read a campaign breakdown';
+end $$;
+
+do $$ begin
+  perform app_customers('c1000000-0000-0000-0000-00000000000a', now() - interval '2 days', now());
+  raise exception 'FAILED: anonymous read a customer list';
+exception when insufficient_privilege then
+  raise notice 'ok  anonymous may not read the customer list';
 end $$;
 
 rollback;
