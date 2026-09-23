@@ -1,14 +1,29 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import { Products } from '@/views/app/Products'
-import { SeededNotice } from '@/components/layout/SeededNotice'
+import { ProductsLive } from '@/views/app/ProductsLive'
+import { dashboardContext } from '@/services/dashboard-context.server'
+import { scopeFromParams, type ScopeParams } from '@/services/scope'
 
 export const metadata: Metadata = { title: 'Products' }
 
-export default function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<ScopeParams> }) {
+  const context = await dashboardContext()
+  if (!context) redirect('/login')
+  if (context.mode !== 'live') return <Products />
+
+  const scope = scopeFromParams(await searchParams)
+  const [products, outlets] = await Promise.all([
+    context.repo.products(scope),
+    context.repo.outletOptions(),
+  ])
+
   return (
-    <div className="space-y-4">
-      <SeededNotice />
-      <Products />
-    </div>
+    <ProductsLive
+      products={products}
+      outlets={outlets}
+      rangeLabel={scope.range.label}
+      canManage={context.can('product:manage')}
+    />
   )
 }

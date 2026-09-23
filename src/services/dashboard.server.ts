@@ -12,14 +12,17 @@ import {
   type CampaignRow,
   type CustomerRow,
   type Funnel,
+  type OrganizationDetail,
   type OutletDetail,
   type OutletOption,
+  type ProductRow,
   type OverviewStats,
   type Page,
   type RatingBucket,
   type ReviewItem,
   type SeriesPoint,
   type TagRow,
+  type TeamMember,
 } from './dashboard'
 
 /**
@@ -199,6 +202,7 @@ export class SupabaseDashboardRepo implements DashboardRepo {
     if (scope.outletId) query = query.eq('outlet_id', scope.outletId)
     if (filter.maxRating) query = query.lte('rating', filter.maxRating)
     if (filter.status) query = query.eq('status', filter.status)
+    if (filter.productId) query = query.eq('product_id', filter.productId)
 
     const cursor = decodeCursor(filter.cursor)
     if (cursor) {
@@ -515,6 +519,106 @@ export class SupabaseDashboardRepo implements DashboardRepo {
         }
       }),
       nextCursor: hasMore && last ? encodeCursor(last.created_at, last.id) : null,
+    }
+  }
+
+  async products(scope: DashboardScope): Promise<ProductRow[]> {
+    const supabase = await serverClient()
+    const { data, error } = await supabase.rpc('app_product_breakdown', {
+      p_org: this.organizationId,
+      p_from: scope.range.from.toISOString(),
+      p_to: scope.range.to.toISOString(),
+      p_outlet: scope.outletId,
+    })
+    if (error) throw error
+
+    return (
+      (data ?? []) as {
+        product_id: string
+        product_name: string
+        outlet_id: string | null
+        reviews: number | string
+        rating: number | string | null
+        positive: number | string
+        is_active: boolean
+      }[]
+    ).map((row) => ({
+      id: row.product_id,
+      name: row.product_name,
+      outletId: row.outlet_id,
+      reviews: int(row.reviews),
+      rating: nullableFloat(row.rating),
+      positive: int(row.positive),
+      isActive: row.is_active,
+    }))
+  }
+
+  async team(): Promise<TeamMember[]> {
+    const supabase = await serverClient()
+
+    // members_read already limits this to the caller's organizations, so there
+    // is no filter here on purpose — letting the policy do it means a mistake
+    // in this query cannot widen what comes back.
+    const { data, error } = await supabase
+      .from('organization_members')
+      .select('id, user_id, role, accepted_at, invited_email, profiles (full_name, email), team_assignments (outlet_id)')
+      .order('created_at')
+
+    if (error) throw error
+
+    return (
+      (data ?? []) as unknown as {
+        id: string
+        user_id: string
+        role: string
+        accepted_at: string | null
+        invited_email: string | null
+        profiles: { full_name: string | null; email: string | null } | null
+        team_assignments: { outlet_id: string }[]
+      }[]
+    ).map((row) => ({
+      id: row.id,
+      userId: row.user_id,
+      name: row.profiles?.full_name ?? null,
+      email: row.profiles?.email ?? row.invited_email ?? null,
+      role: row.role,
+      acceptedAt: row.accepted_at,
+      assignedOutletIds: (row.team_assignments ?? []).map((a) => a.outlet_id),
+    }))
+  }
+
+  async organization(): Promise<OrganizationDetail | null> {
+    const supabase = await serverClient()
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('id, name, slug, short_code, category, city, country, subscriptions (plan_code, status, plans (name))')
+      .eq('id', this.organizationId)
+      .maybeSingle()
+
+    if (error || !data) return null
+
+    const row = data as unknown as {
+      id: string
+      name: string
+      slug: string
+      short_code: string
+      category: string | null
+      city: string | null
+      country: string | null
+      subscriptions: { plan_code: string; status: string; plans: { name: string } | null } | null
+    }
+
+    return {
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      shortCode: row.short_code,
+      category: row.category,
+      city: row.city,
+      country: row.country,
+      planCode: row.subscriptions?.plan_code ?? null,
+      planName: row.subscriptions?.plans?.name ?? null,
+      subscriptionStatus: row.subscriptions?.status ?? null,
     }
   }
 }

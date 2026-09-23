@@ -266,3 +266,167 @@ export async function setCampaignStatusAction(form: FormData): Promise<ActionRes
   revalidatePath('/app', 'layout')
   return { ok: true }
 }
+
+/* --------------------------------------------------------------- products */
+
+export async function saveProductAction(form: FormData): Promise<ActionResult> {
+  const active = await workspace()
+  if (!active) return NOT_LIVE
+
+  const name = field(form, 'name')
+  if (!name) return { error: 'Give the product a name.' }
+
+  const id = field(form, 'id')
+  const outletId = field(form, 'outletId')
+  const priceText = field(form, 'price')
+  const price = priceText ? Math.round(Number(priceText) * 100) : null
+  if (priceText && (!Number.isFinite(price) || price! < 0)) return { error: 'That price is not a number.' }
+
+  const supabase = await serverClient()
+  const payload = {
+    name,
+    category: field(form, 'category') || null,
+    price_cents: price,
+    // null means the product belongs to the whole organization rather than one
+    // outlet, which the policy treats differently — only admins manage those.
+    outlet_id: outletId || null,
+  }
+
+  const { error } = id
+    ? await supabase.from('products').update(payload).eq('id', id)
+    : await supabase.from('products').insert({ organization_id: active.organizationId, ...payload })
+
+  if (error) {
+    reportError('outlet.write', error.message, { code: error.code })
+    return { error: id ? 'Could not save that product.' : 'Could not create that product.' }
+  }
+
+  revalidatePath('/app', 'layout')
+  return { ok: true }
+}
+
+export async function setProductActiveAction(form: FormData): Promise<ActionResult> {
+  const active = await workspace()
+  if (!active) return NOT_LIVE
+
+  const id = field(form, 'id')
+  if (!id) return { error: 'Missing product.' }
+
+  const supabase = await serverClient()
+  const { error } = await supabase
+    .from('products')
+    .update({ is_active: field(form, 'active') === 'true' })
+    .eq('id', id)
+
+  if (error) {
+    reportError('outlet.write', error.message, { code: error.code })
+    return { error: 'Could not change that product.' }
+  }
+
+  revalidatePath('/app', 'layout')
+  return { ok: true }
+}
+
+/* --------------------------------------------------------------- settings */
+
+export async function updateOrganizationAction(form: FormData): Promise<ActionResult> {
+  const active = await workspace()
+  if (!active) return NOT_LIVE
+
+  const name = field(form, 'name')
+  if (!name) return { error: 'Enter a business name.' }
+
+  const supabase = await serverClient()
+  // slug and short_code are deliberately not editable here: they are printed on
+  // collateral and embedded in reference codes, so changing one silently
+  // invalidates cards that are already on tables.
+  const { error } = await supabase
+    .from('organizations')
+    .update({
+      name,
+      category: field(form, 'category') || null,
+      city: field(form, 'city') || null,
+      country: field(form, 'country') || null,
+    })
+    .eq('id', active.organizationId)
+
+  if (error) {
+    reportError('outlet.write', error.message, { code: error.code })
+    return { error: 'Could not save those details.' }
+  }
+
+  revalidatePath('/app', 'layout')
+  return { ok: true }
+}
+
+const ROLES = ['OWNER', 'ADMIN', 'REGIONAL_MANAGER', 'OUTLET_MANAGER', 'STAFF']
+
+export async function setMemberRoleAction(form: FormData): Promise<ActionResult> {
+  const active = await workspace()
+  if (!active) return NOT_LIVE
+
+  const memberId = field(form, 'memberId')
+  const role = field(form, 'role')
+  if (!memberId || !ROLES.includes(role)) return { error: 'Unknown role.' }
+
+  const supabase = await serverClient()
+
+  // An organization without an owner cannot be administered by anyone, and
+  // there is no policy that can express "not the last one" — so it is checked
+  // here, before the update rather than after.
+  const { data: member } = await supabase
+    .from('organization_members')
+    .select('id, role, user_id')
+    .eq('id', memberId)
+    .maybeSingle()
+
+  if (!member) return { error: 'That member is not available.' }
+
+  if (member.role === 'OWNER' && role !== 'OWNER') {
+    const { count } = await supabase
+      .from('organization_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', active.organizationId)
+      .eq('role', 'OWNER')
+
+    if ((count ?? 0) <= 1) {
+      return { error: 'This is the only owner. Make someone else an owner first.' }
+    }
+  }
+
+  const { error } = await supabase.from('organization_members').update({ role }).eq('id', memberId)
+  if (error) {
+    reportError('outlet.write', error.message, { code: error.code })
+    return { error: 'Could not change that role.' }
+  }
+
+  revalidatePath('/app', 'layout')
+  return { ok: true }
+}
+
+export async function removeMemberAction(form: FormData): Promise<ActionResult> {
+  const active = await workspace()
+  if (!active) return NOT_LIVE
+
+  const memberId = field(form, 'memberId')
+  if (!memberId) return { error: 'Missing member.' }
+
+  const supabase = await serverClient()
+  const { data: member } = await supabase
+    .from('organization_members')
+    .select('id, role, user_id')
+    .eq('id', memberId)
+    .maybeSingle()
+
+  if (!member) return { error: 'That member is not available.' }
+  if (member.role === 'OWNER') return { error: 'Transfer ownership before removing an owner.' }
+
+  const { error } = await supabase.from('organization_members').delete().eq('id', memberId)
+  if (error) {
+    reportError('outlet.write', error.message, { code: error.code })
+    return { error: 'Could not remove that member.' }
+  }
+
+  revalidatePath('/app', 'layout')
+  return { ok: true }
+}

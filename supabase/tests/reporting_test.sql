@@ -47,6 +47,12 @@ insert into outlets (id, organization_id, name, short_code) values
 insert into team_assignments (organization_id, member_id, outlet_id) values
   ('c1000000-0000-0000-0000-00000000000a', 'c1000000-1111-0000-0000-00000000000e', 'c2000000-0000-0000-0000-00000000000a');
 
+insert into products (id, organization_id, outlet_id, name) values
+  ('c1000000-3333-0000-0000-00000000000a', 'c1000000-0000-0000-0000-00000000000a',
+   'c2000000-0000-0000-0000-00000000000a', 'Mango Cheesecake'),
+  ('c1000000-3333-0000-0000-00000000000b', 'c1000000-0000-0000-0000-00000000000b',
+   'c2000000-0000-0000-0000-00000000000c', 'Pune Special');
+
 insert into qr_campaigns (id, organization_id, outlet_id, name, public_id, reference_code) values
   ('c3000000-0000-0000-0000-00000000000a', 'c1000000-0000-0000-0000-00000000000a', 'c2000000-0000-0000-0000-00000000000a', 'T1', 'aaaaaaaaaa', 'RD-OA-TH-T01'),
   ('c3000000-0000-0000-0000-00000000000b', 'c1000000-0000-0000-0000-00000000000a', 'c2000000-0000-0000-0000-00000000000b', 'T2', 'bbbbbbbbbb', 'RD-OA-BN-T01'),
@@ -284,6 +290,39 @@ select assert(
      now() - interval '2 days', now())) = 1,
   'an erased customer drops out of the customer list');
 
+-- ---------------------------------------------------------------- products
+
+-- feedback in org A is already tied to the Mango Cheesecake by the fixtures
+update customer_feedback set product_id = 'c1000000-3333-0000-0000-00000000000a'
+ where organization_id = 'c1000000-0000-0000-0000-00000000000a' and rating >= 4;
+
+select assert(
+  (select reviews from app_product_breakdown('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now())
+    where product_id = 'c1000000-3333-0000-0000-00000000000a') = 3,
+  'the product breakdown counts the feedback tied to a product');
+
+select assert(
+  (select rating from app_product_breakdown('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now())
+    where product_id = 'c1000000-3333-0000-0000-00000000000a') = 4.67,
+  'and averages its rating');
+
+-- a product nobody has mentioned still appears; "no feedback yet" is information
+insert into products (id, organization_id, outlet_id, name) values
+  ('c1000000-3333-0000-0000-00000000000f', 'c1000000-0000-0000-0000-00000000000a',
+   'c2000000-0000-0000-0000-00000000000a', 'Untouched Scone');
+select assert(
+  (select reviews from app_product_breakdown('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now())
+    where product_id = 'c1000000-3333-0000-0000-00000000000f') = 0,
+  'a product with no feedback still appears, with zero');
+
+select assert(
+  (select count(*) from app_product_breakdown('c1000000-0000-0000-0000-00000000000b',
+     now() - interval '2 days', now())) = 0,
+  'another organization''s products are not visible');
+
 -- ---------------------------------------------------------------- anon
 
 set local role anon;
@@ -308,6 +347,13 @@ do $$ begin
   raise exception 'FAILED: anonymous read a customer list';
 exception when insufficient_privilege then
   raise notice 'ok  anonymous may not read the customer list';
+end $$;
+
+do $$ begin
+  perform app_product_breakdown('c1000000-0000-0000-0000-00000000000a', now() - interval '2 days', now());
+  raise exception 'FAILED: anonymous read a product breakdown';
+exception when insufficient_privilege then
+  raise notice 'ok  anonymous may not read a product breakdown';
 end $$;
 
 rollback;

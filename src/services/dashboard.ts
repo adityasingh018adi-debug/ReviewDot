@@ -89,6 +89,39 @@ export type FeedbackItem = {
   productName: string | null
 }
 
+export type ProductRow = {
+  id: string
+  name: string
+  outletId: string | null
+  reviews: number
+  rating: number | null
+  positive: number
+  isActive: boolean
+}
+
+export type TeamMember = {
+  id: string
+  userId: string
+  name: string | null
+  email: string | null
+  role: string
+  acceptedAt: string | null
+  assignedOutletIds: string[]
+}
+
+export type OrganizationDetail = {
+  id: string
+  name: string
+  slug: string
+  shortCode: string
+  category: string | null
+  city: string | null
+  country: string | null
+  planCode: string | null
+  planName: string | null
+  subscriptionStatus: string | null
+}
+
 export type TagRow = { tag: string; mentions: number; positive: number; avgRating: number | null }
 
 /** Where the journey loses people, step by step. */
@@ -125,6 +158,8 @@ export type Page<T> = { items: T[]; nextCursor: string | null }
 export type FeedbackFilter = {
   /** Only feedback at or below this rating — the triage view. */
   maxRating?: number
+  /** Only feedback tied to one product. */
+  productId?: string
   status?: FeedbackItem['status']
   cursor?: string | null
   limit?: number
@@ -146,6 +181,9 @@ export interface DashboardRepo {
   funnel(scope: DashboardScope): Promise<Funnel>
   customers(scope: DashboardScope): Promise<CustomerRow[]>
   reviews(scope: DashboardScope, filter?: FeedbackFilter): Promise<Page<ReviewItem>>
+  products(scope: DashboardScope): Promise<ProductRow[]>
+  team(): Promise<TeamMember[]>
+  organization(): Promise<OrganizationDetail | null>
 }
 
 export const PAGE_SIZE = 25

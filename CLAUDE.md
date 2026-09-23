@@ -138,10 +138,21 @@ default branch unless they have just asked for a deploy.
   the UI offers a button the database refuses with nothing to explain it — fix
   both sides deliberately (see `0008_role_alignment.sql`), don't just change
   one.
-- Demo mode keeps reading `src/lib/metrics.ts` through `DemoDashboardRepo`, so
-  the reference figures stay exact. Pages still on seeded data carry
-  `<SeededNotice />`; delete that line when the page's queries land, and when
-  none are left delete the component, `src/lib/data.ts` and the demo views.
+- Every dashboard page reads the database in live mode. Demo mode still runs on
+  `src/lib/metrics.ts` through `DemoDashboardRepo`, so the reference figures
+  stay exact — that is the only thing `src/lib/data.ts` and the seeded views are
+  still for.
+- Insight cards are **computed, not generated** (`src/services/insights.ts`).
+  Every card states a figure that came out of the database, and a card only
+  appears when there is enough behind it to mean something. A model writing
+  findings about a business's own customers would be inventing them.
+- `/api/ai/assistant` builds its context **server-side** from the caller's own
+  rows and requires a session. It used to take a `context` object from the
+  request body and interpolate it into the system prompt, unauthenticated.
+  Never reintroduce a path where client text reaches a system prompt.
+- `/api/ai/review` stays public because customers scanning a code have no
+  account; `/api/ai/response` and `/api/ai/assistant` require one and are rate
+  limited per user.
 - The 30-day demo window reproduces the product's reference figures exactly (1,248 scans, 326 reviews,
   4.7★, 26.1%, and the product table). `src/lib/data.test.ts` asserts them — if a change moves those
   numbers, that is a bug in the change, not the test.
@@ -159,5 +170,5 @@ npm run lint
 npm test           # Vitest
 npm run test:e2e   # Playwright (builds and starts the app itself)
 npm run db:migrate # apply outstanding migrations (tracked, once each)
-npm run db:test    # 167 database checks: isolation, auth, policy, flow, reporting
+npm run db:test    # 172 database checks: isolation, auth, policy, flow, reporting
 ```

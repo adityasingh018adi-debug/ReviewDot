@@ -1,6 +1,15 @@
-import { byOutlet, entriesIn, overview, ratingDistribution, seriesFor, type Scope } from '@/lib/metrics'
+import {
+  byOutlet,
+  byProduct,
+  entriesIn,
+  overview,
+  ratingDistribution,
+  seriesFor,
+  type Scope,
+} from '@/lib/metrics'
 import { baseData } from '@/lib/metrics'
 import {
+  business,
   customers as demoCustomers,
   isPositiveTag,
   outletById,
@@ -20,14 +29,17 @@ import {
   type CampaignRow,
   type CustomerRow,
   type Funnel,
+  type OrganizationDetail,
   type OutletDetail,
   type OutletOption,
+  type ProductRow,
   type OverviewStats,
   type Page,
   type RatingBucket,
   type ReviewItem,
   type SeriesPoint,
   type TagRow,
+  type TeamMember,
 } from './dashboard'
 
 /**
@@ -99,6 +111,7 @@ export class DemoDashboardRepo implements DashboardRepo {
       .sort((a, b) => (a.createdAt === b.createdAt ? b.id.localeCompare(a.id) : b.createdAt.localeCompare(a.createdAt)))
 
     if (filter.maxRating) entries = entries.filter((entry) => entry.rating <= filter.maxRating!)
+    if (filter.productId) entries = entries.filter((entry) => entry.productId === filter.productId)
     if (filter.status) entries = entries.filter((entry) => entry.status === filter.status)
 
     const cursor = decodeCursor(filter.cursor)
@@ -241,6 +254,49 @@ export class DemoDashboardRepo implements DashboardRepo {
         postedAt: item.createdAt,
       })),
       nextCursor: page.nextCursor,
+    }
+  }
+
+  async products(scope: DashboardScope): Promise<ProductRow[]> {
+    return byProduct(this.toMetricsScope(scope), baseData).map((row) => ({
+      id: row.id,
+      name: row.name,
+      outletId: null,
+      reviews: row.reviews,
+      rating: row.reviews ? row.rating : null,
+      positive: Math.round(row.positive * row.reviews),
+      isActive: true,
+    }))
+  }
+
+  async team(): Promise<TeamMember[]> {
+    // The seeded workspace is one person. Inventing colleagues for a demo would
+    // put names in a team list that belong to nobody.
+    return [
+      {
+        id: 'demo-member',
+        userId: 'demo-user',
+        name: 'Ritika Shah',
+        email: 'ritika@loveandlatte.in',
+        role: 'OWNER',
+        acceptedAt: new Date().toISOString(),
+        assignedOutletIds: [],
+      },
+    ]
+  }
+
+  async organization(): Promise<OrganizationDetail | null> {
+    return {
+      id: business.id,
+      name: business.name,
+      slug: 'love-latte',
+      shortCode: business.mark.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 4) || 'LL',
+      category: business.category,
+      city: business.city,
+      country: 'India',
+      planCode: business.plan.toUpperCase(),
+      planName: business.plan,
+      subscriptionStatus: 'active',
     }
   }
 }

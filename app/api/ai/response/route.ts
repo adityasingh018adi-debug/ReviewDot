@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server'
+import { getWorkspaceSession } from '@/services/auth.server'
+import { isSupabaseConfigured } from '@/services/supabase'
+import { limiter } from '@/lib/rate-limit'
 import type { ResponseInput, ResponseTone } from '@/services/types'
 
 /**
@@ -30,7 +33,26 @@ function localReply(input: ResponseInput): string {
   return [opener, middle, close].join(' ')
 }
 
+const LIMIT = { max: 20, windowMs: 60_000 }
+
 export async function POST(request: Request) {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ error: 'Not available on this deployment.' }, { status: 503 })
+  }
+
+  const workspace = await getWorkspaceSession()
+  if (!workspace?.active) {
+    return NextResponse.json({ error: 'Sign in to draft a reply.' }, { status: 401 })
+  }
+
+  const verdict = limiter.check(`ai-response:${workspace.user.id}`, LIMIT.max, LIMIT.windowMs)
+  if (!verdict.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests, please retry shortly.' },
+      { status: 429, headers: { 'retry-after': String(Math.ceil(verdict.retryAfterMs / 1000)) } },
+    )
+  }
+
   const body = (await request.json().catch(() => null)) as Partial<ResponseInput> | null
   const feedback = typeof body?.feedback === 'string' ? body.feedback.trim().slice(0, 2000) : ''
   const rating = Number(body?.rating)
