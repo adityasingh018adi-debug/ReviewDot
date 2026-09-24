@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Analytics } from '@/views/app/Analytics'
 import { AnalyticsLive } from '@/views/app/AnalyticsLive'
 import { dashboardContext } from '@/services/dashboard-context.server'
 import { scopeFromParams, type ScopeParams } from '@/services/scope'
@@ -8,8 +7,6 @@ export const metadata: Metadata = { title: 'Analytics' }
 
 export default async function Page({ searchParams }: { searchParams: Promise<ScopeParams> }) {
   const context = await dashboardContext()
-  if (context.mode !== 'live') return <Analytics />
-
   const scope = scopeFromParams(await searchParams)
   const [series, funnel, tags, outlets, distribution] = await Promise.all([
     context.repo.series(scope),

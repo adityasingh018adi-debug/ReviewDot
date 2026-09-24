@@ -7,8 +7,9 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
 import { Empty } from '@/components/ui/Empty'
 import { Stars } from '@/components/ui/Stars'
-import type { Page, ReviewItem } from '@/services/dashboard'
+import type { ChannelRow, Page, ReviewItem } from '@/services/dashboard'
 import { OutletPicker } from '@/components/layout/ScopePickers'
+import { Tabs } from '@/components/ui/Tabs'
 
 /**
  * Reviews that actually reached a platform.
@@ -22,11 +23,16 @@ export function InboxLive({
   rangeLabel,
   outletLabel,
   page,
+  channels,
+  activeChannel,
   baseQuery,
 }: {
   rangeLabel: string
   outletLabel: string
   page: Page<ReviewItem>
+  /** Counted across the whole window, for the tab badges. */
+  channels: ChannelRow[]
+  activeChannel: string
   baseQuery: Record<string, string>
 }) {
   const nextLink = (cursor: string) => {
@@ -40,6 +46,23 @@ export function InboxLive({
         title="Reviews"
         description={`${rangeLabel} · ${outletLabel}`}
         action={<OutletPicker />}
+      />
+
+      <Tabs
+        className="mb-4"
+        param="channel"
+        active={activeChannel}
+        tabs={[
+          { key: 'all', label: 'All', count: channels.reduce((sum, c) => sum + c.clicks, 0) },
+          ...channels
+            // a channel nobody is set up on is not a filter worth offering
+            .filter((channel) => channel.configured || channel.clicks > 0)
+            .map((channel) => ({
+              key: channel.channel,
+              label: CHANNEL_LABELS[channel.channel] ?? channel.channel,
+              count: channel.clicks,
+            })),
+        ]}
       />
 
       <Card>
@@ -111,4 +134,11 @@ export function InboxLive({
       </Card>
     </div>
   )
+}
+
+const CHANNEL_LABELS: Record<string, string> = {
+  google: 'Google',
+  zomato: 'Zomato',
+  swiggy: 'Swiggy',
+  instagram: 'Instagram',
 }

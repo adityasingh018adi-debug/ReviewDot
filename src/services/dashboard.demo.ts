@@ -250,16 +250,17 @@ export class DemoDashboardRepo implements DashboardRepo {
 
   async reviews(scope: DashboardScope, filter: FeedbackFilter = {}): Promise<Page<ReviewItem>> {
     const page = await this.feedback(scope, filter)
-    return {
-      items: page.items.map((item) => ({
+    const items = page.items
+      .map((item) => ({
         ...item,
         finalText: item.comment,
         editedByCustomer: false,
-        destination: 'google',
+        destination: demoDestination(item.id),
         postedAt: item.createdAt,
-      })),
-      nextCursor: page.nextCursor,
-    }
+      }))
+      .filter((item) => !filter.destination || item.destination === filter.destination)
+
+    return { items, nextCursor: page.nextCursor }
   }
 
   async products(scope: DashboardScope): Promise<ProductRow[]> {
@@ -360,4 +361,21 @@ export class DemoDashboardRepo implements DashboardRepo {
     // Nothing is pending in a workspace nobody can be invited to.
     return []
   }
+}
+
+/**
+ * Which platform a seeded review went to.
+ *
+ * The seeded dataset records no destination, so one is derived from the review's
+ * own id: stable across reloads, and split in the same proportions the demo
+ * channel cards report, so the tab counts and the list underneath agree. On a
+ * real workspace this comes from review_events and is not derived at all.
+ */
+function demoDestination(id: string): string {
+  let total = 0
+  for (let i = 0; i < id.length; i += 1) total = (total * 31 + id.charCodeAt(i)) | 0
+  const bucket = Math.abs(total) % 100
+  if (bucket < 58) return 'google'
+  if (bucket < 85) return 'zomato'
+  return 'swiggy'
 }

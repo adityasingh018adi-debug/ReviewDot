@@ -470,6 +470,11 @@ export class SupabaseDashboardRepo implements DashboardRepo {
       .limit(limit + 1)
 
     if (scope.outletId) query = query.eq('outlet_id', scope.outletId)
+    // filters on the embedded review_events row, which is an inner join here,
+    // so this narrows to reviews sent to that one platform
+    if (filter.destination) {
+      query = query.eq('review_events.destination', filter.destination)
+    }
 
     const cursor = decodeCursor(filter.cursor)
     if (cursor) {

@@ -2,14 +2,13 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { ProductDetail } from '@/views/app/ProductDetail'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Empty } from '@/components/ui/Empty'
 import { FeedbackLine } from '@/views/app/DashboardLive'
 import { dashboardContext } from '@/services/dashboard-context.server'
 import { scopeFromParams, type ScopeParams } from '@/services/scope'
-import { formatNumber, formatPercent } from '@/lib/utils'
+import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Product' }
 
@@ -21,8 +20,6 @@ export default async function Page({
   searchParams: Promise<ScopeParams>
 }) {
   const context = await dashboardContext()
-  if (context.mode !== 'live') return <ProductDetail />
-
   const { productId } = await params
   const scope = scopeFromParams(await searchParams)
 
@@ -41,14 +38,24 @@ export default async function Page({
         <ArrowLeft size={15} /> All products
       </Link>
 
-      <PageHeader title={product.name} description={scope.range.label} />
+      <PageHeader
+        title={product.name}
+        description={[product.category, scope.range.label].filter(Boolean).join(' · ')}
+      />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Feedback" value={formatNumber(product.reviews)} />
+      <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-6">
+        <Stat label="Reviews" value={formatNumber(product.reviews)} />
         <Stat label="Rating" value={product.rating === null ? '—' : `${product.rating.toFixed(1)}★`} />
         <Stat
           label="Positive"
           value={product.reviews ? formatPercent(product.positive / product.reviews, 0) : '—'}
+        />
+        {/* 3★ and below: the part that never reached a public platform */}
+        <Stat label="Private" value={formatNumber(product.privateFeedback)} />
+        <Stat label="Scans" value={formatNumber(product.scans)} />
+        <Stat
+          label="Price"
+          value={product.priceCents === null ? '—' : formatCurrency(product.priceCents / 100)}
         />
       </div>
 

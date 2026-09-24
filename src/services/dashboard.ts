@@ -211,6 +211,8 @@ export type FeedbackFilter = {
   /** Only feedback tied to one product. */
   productId?: string
   status?: FeedbackItem['status']
+  /** Only reviews sent to one platform. Ignored by the feedback list. */
+  destination?: string
   cursor?: string | null
   limit?: number
 }

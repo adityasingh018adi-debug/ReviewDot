@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
-import { Building2, Users } from 'lucide-react'
+import { Building2, Moon, Sun, Users } from 'lucide-react'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -10,6 +10,8 @@ import { Field, Input } from '@/components/ui/Field'
 import { Badge } from '@/components/ui/Badge'
 import { updateOrganizationAction } from '@/app-actions/workspace'
 import type { OrganizationDetail } from '@/services/dashboard'
+import { useTheme } from '@/lib/theme'
+import { cn } from '@/lib/utils'
 
 /**
  * Workspace settings and the team.
@@ -27,6 +29,8 @@ export function SettingsLive({
   canManageOrg: boolean
   teamSize: number
 }) {
+  const { theme, setTheme } = useTheme()
+
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" description="Your workspace and who can see it" />
@@ -54,6 +58,26 @@ export function SettingsLive({
           <Users size={14} className="text-faint" /> {teamSize}{' '}
           {teamSize === 1 ? 'member' : 'members'} in this workspace
         </p>
+      </Card>
+
+      <Card>
+        <CardHeader title="Appearance" subtitle="Applies to this browser only" />
+        <div className="grid max-w-sm grid-cols-2 gap-3">
+          {(['light', 'dark'] as const).map((option) => (
+            <button
+              key={option}
+              onClick={() => setTheme(option)}
+              className={cn(
+                'flex items-center justify-center gap-2 rounded-2xl border px-4 py-4 text-[13px] font-medium capitalize transition-colors',
+                theme === option
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line text-muted hover:text-ink',
+              )}
+            >
+              {option === 'light' ? <Sun size={15} /> : <Moon size={15} />} {option}
+            </button>
+          ))}
+        </div>
       </Card>
 
       <Card>

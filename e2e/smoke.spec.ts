@@ -126,7 +126,7 @@ test.describe('dashboard', () => {
     await fresh(page, '/app')
     await page.getByRole('link', { name: 'QR studio' }).click()
     await expect(page).toHaveURL(/\/app\/campaigns/)
-    await expect(page.getByRole('heading', { name: 'QR campaigns' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'QR studio' })).toBeVisible()
 
     await page.getByRole('link', { name: 'AI insights' }).click()
     await expect(page).toHaveURL(/\/app\/insights/)
@@ -137,7 +137,11 @@ test.describe('dashboard', () => {
     await fresh(page, '/app')
     await page.getByRole('link', { name: /Mango Cheesecake/ }).first().click()
     await expect(page).toHaveURL(/products\/prd-mango-cheesecake/)
-    await expect(page.getByText('AI customer summary')).toBeVisible()
+    // the seeded figures for this product, on the page every account now sees —
+    // there is no demo-only product view left to diverge from it
+    await expect(page.getByRole('heading', { name: 'Mango Cheesecake' })).toBeVisible()
+    await expect(page.getByText('86').first()).toBeVisible()
+    await expect(page.getByText('What customers said')).toBeVisible()
   })
 })
 
