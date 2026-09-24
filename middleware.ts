@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { resolveMode } from '@/lib/app-mode'
 import { isProtectedPath, isSignedOutOnlyPath } from '@/lib/routes'
 import { classifyAuth } from '@/lib/auth-outcome'
+import { sessionCookieDomain } from '@/lib/cookie-domain'
 
 /**
  * The authentication gate.
@@ -61,10 +62,15 @@ export async function middleware(request: NextRequest) {
     return redirect
   }
 
+  const domain = sessionCookieDomain(request.headers.get('host'))
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Without this the cookie is host-only, so reviewdot.in and
+      // www.reviewdot.in each hold their own half of one sign-in.
+      ...(domain ? { cookieOptions: { domain } } : {}),
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll: (list) => {
@@ -94,6 +100,31 @@ export async function middleware(request: NextRequest) {
 
   if (isProtectedPath(pathname)) {
     if (!user) {
+      /*
+       * One line, in the deployment log, saying why.
+       *
+       * Everything about this redirect looks identical from the outside
+       * whatever caused it — a real sign-out, a cookie the browser never sent
+       * back, a token the auth server rejected. Names and counts only; no
+       * token, no address, nothing about who this is.
+       */
+      console.log(
+        JSON.stringify({
+          level: 'info',
+          scope: 'auth.redirect',
+          to: '/login',
+          from: pathname,
+          host: request.headers.get('host'),
+          proto: request.headers.get('x-forwarded-proto'),
+          cookieDomain: domain ?? 'host-only',
+          sessionCookies: request.cookies
+            .getAll()
+            .filter((cookie) => cookie.name.startsWith('sb-'))
+            .map((cookie) => cookie.name),
+          reason: error ? `${error.name}: ${error.message}` : 'no session in request',
+        }),
+      )
+
       const login = request.nextUrl.clone()
       login.pathname = '/login'
       login.search = ''

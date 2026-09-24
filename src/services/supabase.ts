@@ -1,4 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr'
+import { sessionCookieDomain } from '@/lib/cookie-domain'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { appMode, isDemo, isLive, type AppMode } from '@/lib/app-mode'
 
@@ -35,6 +36,12 @@ export function browserClient(): SupabaseClient {
   if (!isSupabaseConfigured()) {
     throw new Error('Supabase is not configured — browserClient() is unavailable in this mode')
   }
-  browser ??= createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  const domain =
+    typeof window === 'undefined' ? undefined : sessionCookieDomain(window.location.hostname)
+  browser ??= createBrowserClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
+    domain ? { cookieOptions: { domain } } : undefined,
+  )
   return browser
 }

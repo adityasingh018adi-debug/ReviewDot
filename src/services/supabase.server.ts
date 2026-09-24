@@ -1,8 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from './supabase'
 import { reportError } from '@/lib/observability'
+import { sessionCookieDomain } from '@/lib/cookie-domain'
 
 /**
  * Supabase, server side. Two clients, and the difference matters:
@@ -74,7 +75,12 @@ export async function serverClient(): Promise<SupabaseClient> {
   const cached = perRequest.get(store)
   if (cached) return cached
 
+  // Host-only by default, which splits reviewdot.in from www.reviewdot.in and
+  // loses the session on whichever one the browser lands on second.
+  const domain = sessionCookieDomain((await headers()).get('host'))
+
   const client = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    ...(domain ? { cookieOptions: { domain } } : {}),
     cookies: {
       getAll: () => store.getAll(),
       setAll: (list) => {
