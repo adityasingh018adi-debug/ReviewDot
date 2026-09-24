@@ -24,6 +24,7 @@ import { PhoneFrame } from '@/components/marketing/PhoneFrame'
 import { ReviewExperience } from '@/components/review/ReviewExperience'
 import { TableCard } from '@/components/qr/TableCard'
 import { demoQR, outlets, products } from '@/lib/data'
+import { ReviewWriterDemo } from '@/components/marketing/ReviewWriterDemo'
 
 const CAPABILITIES = [
   {
@@ -103,6 +104,23 @@ export function Product() {
             <ButtonLink href={`/r/${demoQR.code}`} variant="secondary">
               Try the customer flow
             </ButtonLink>
+          </div>
+        </div>
+      </section>
+
+      {/* The writer, live. It moved here from the home page when that page was
+          rebuilt to the new design — worth keeping reachable, because "see how it
+          works" should mean watching it work, and because an e2e test drives this
+          demo to prove the draft never invents a price, a wait or a star count. */}
+      <section className="border-b border-line py-16">
+        <div className="container-page">
+          <SectionHeading
+            eyebrow="AI review assistant"
+            title="Name the dish. Read the review."
+            description="The same writer your customers use, running on this page."
+          />
+          <div className="mx-auto mt-8 max-w-2xl">
+            <ReviewWriterDemo />
           </div>
         </div>
       </section>

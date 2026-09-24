@@ -134,7 +134,13 @@ After a deploy, confirm the live site actually changed before calling it shipped
 
 ## Notes
 
-- Hero stats (10K+ / 1M+ / 4.8★) and testimonials are illustrative placeholders for the marketing page.
+- The marketing home page carries illustrative copy, clearly separated from anything the product
+  measures: the hero counters (10K+ / 1M+ / 4.8★ / +62%), the dashboard preview figures and the
+  three testimonials. The testimonials are labelled as samples on the page itself, and an e2e test
+  keeps that label there — invented praise presented as genuine endorsement is regulated, not just
+  impolite. Replace them with real quotes, with permission, as soon as there are any.
+- The category and hero imagery is brand-tinted gradient, not photography. The slots are laid out
+  for real photos; dropping them in needs no layout change.
 - The model key is server-side only. AI runs behind `/api/ai/*` and the browser never holds a key;
   an e2e test greps every client bundle for `anthropic` and `sk-ant` to keep that true.
 - CI runs lint, unit tests, a type-checked build and the Playwright suite on every branch. Deployment

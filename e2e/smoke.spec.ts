@@ -10,26 +10,40 @@ test.describe('marketing site', () => {
   test('server-renders the positioning and structured data', async ({ page }) => {
     const response = await page.goto('/')
     const html = (await response?.text()) ?? ''
-    // crawlable without JavaScript
-    expect(html).toContain('Turn Every Customer Experience Into a Review')
+    // crawlable without JavaScript: the copy must be in the server response,
+    // not painted in afterwards
+    expect(html).toContain('AI writes the review')
     expect(html).toContain('AI-powered customer feedback and review management')
     expect(html).toContain('"@type":"SoftwareApplication"')
 
-    await expect(
-      page.getByRole('heading', { name: 'Turn Every Customer Experience Into a Review' }),
-    ).toBeVisible()
+    await expect(page.getByRole('heading', { name: /AI writes the review/ })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Start Free' }).first()).toBeVisible()
   })
 
-  test('shows the scan → feedback → AI review → public review → insights flow', async ({ page }) => {
+  test('explains the whole journey, from item name to posted review', async ({ page }) => {
     await page.goto('/')
-    for (const step of ['QR scan', 'Customer feedback', 'AI review', 'Public review', 'Business insights']) {
+    for (const step of [
+      'Customer enters only the item name',
+      'AI creates a complete review',
+      'Customer reviews and can edit',
+      'Choose a platform to post',
+      'Review posted successfully',
+    ]) {
       await expect(page.getByText(step, { exact: true })).toBeVisible()
     }
   })
 
-  test('runs the AI review writer demo', async ({ page }) => {
+  test('labels its sample testimonials as samples', async ({ page }) => {
+    // These are written copy, not quotes from named customers. The page has to
+    // say so — invented praise presented as genuine endorsement is regulated,
+    // not merely impolite.
     await page.goto('/')
+    await expect(page.getByText(/Sample testimonials/i)).toBeVisible()
+  })
+
+  test('runs the AI review writer demo', async ({ page }) => {
+    // lives on /product since the home page was rebuilt
+    await page.goto('/product')
     await page.getByRole('button', { name: /Create the review/ }).scrollIntoViewIfNeeded()
     await page.getByRole('button', { name: /Create the review/ }).click()
     await expect(page.locator('blockquote').first()).toBeVisible({ timeout: 15_000 })
