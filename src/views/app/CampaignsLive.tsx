@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
-import { Archive, Check, Copy, Pause, Play, Plus } from 'lucide-react'
+import { Archive, Check, Copy, Download, Pause, Play, Plus } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
@@ -19,6 +19,8 @@ import {
   updateCampaignAction,
 } from '@/app-actions/workspace'
 import type { CampaignRow, OutletOption } from '@/services/dashboard'
+import { OutletPicker } from '@/components/layout/ScopePickers'
+import { qrSvg } from '@/lib/qr'
 
 /**
  * QR campaigns, from the database.
@@ -57,14 +59,17 @@ export function CampaignsLive({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="QR campaigns"
+        title="QR studio"
         description="Every code, where it sits and how it is doing"
         action={
-          canManage && outlets.length ? (
+          <>
+            <OutletPicker />
+            {canManage && outlets.length ? (
             <Button size="sm" onClick={() => setCreating(true)}>
               <Plus size={15} /> New QR code
             </Button>
-          ) : null
+          ) : null}
+          </>
         }
       />
 
@@ -173,6 +178,9 @@ function CampaignCard({
       </dl>
 
       <div className="mt-4 flex flex-wrap gap-2">
+        <Button size="sm" variant="secondary" onClick={() => downloadQR(url, campaign.referenceCode)}>
+          <Download size={14} /> Download
+        </Button>
         <Button size="sm" variant="secondary" onClick={() => copy(url)}>
           {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy link'}
         </Button>
@@ -283,3 +291,24 @@ function CampaignDialog({
   )
 }
 
+
+/**
+ * Saves the code as an SVG.
+ *
+ * Vector rather than PNG because these get printed — on a table card, a bill
+ * footer, a packaging sleeve — and a raster export is the reason a code that
+ * scanned fine on screen fails at the table. Dark on light regardless of the
+ * dashboard theme: inverted codes defeat many phone scanners.
+ */
+function downloadQR(url: string, reference: string) {
+  const svg = qrSvg(url, { size: 1024 })
+  const blob = new Blob([svg], { type: 'image/svg+xml' })
+  const href = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = href
+  link.download = `${reference || 'reviewdot'}.svg`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(href)
+}

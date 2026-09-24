@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, type FormEvent } from 'react'
 import { Package, Plus } from 'lucide-react'
 import { Card, CardHeader } from '@/components/ui/Card'
@@ -9,9 +10,10 @@ import { Field, Input, Select } from '@/components/ui/Field'
 import { Badge } from '@/components/ui/Badge'
 import { Empty } from '@/components/ui/Empty'
 import { Modal } from '@/components/ui/Modal'
-import { formatNumber, formatPercent } from '@/lib/utils'
+import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils'
 import { saveProductAction, setProductActiveAction } from '@/app-actions/workspace'
 import type { OutletOption, ProductRow } from '@/services/dashboard'
+import { OutletPicker } from '@/components/layout/ScopePickers'
 
 /**
  * Products, from the database.
@@ -39,16 +41,27 @@ export function ProductsLive({
         title="Products"
         description={`What customers are reviewing · ${rangeLabel}`}
         action={
-          canManage ? (
+          <>
+            <OutletPicker />
+            {canManage ? (
             <Button size="sm" onClick={() => setCreating(true)}>
               <Plus size={15} /> Add product
             </Button>
-          ) : null
+          ) : null}
+          </>
         }
       />
 
       <Card>
-        <CardHeader title="Product intelligence" subtitle="Ranked by how much feedback mentions them" />
+        <CardHeader
+          title="Product intelligence"
+          subtitle="Ranked by how much feedback mentions them"
+          action={
+            <span className="text-[12px] text-faint">
+              {formatNumber(products.length)} {products.length === 1 ? 'product' : 'products'}
+            </span>
+          }
+        />
 
         {products.length ? (
           <div className="-mx-2 overflow-x-auto">
@@ -56,9 +69,12 @@ export function ProductsLive({
               <thead>
                 <tr className="border-b border-line text-[11px] uppercase tracking-[0.14em] text-faint">
                   <th className="px-2 py-2.5 font-medium">Product</th>
-                  <th className="px-2 py-2.5 text-right font-medium">Feedback</th>
+                  <th className="px-2 py-2.5 text-right font-medium">Reviews</th>
                   <th className="px-2 py-2.5 text-right font-medium">Rating</th>
                   <th className="px-2 py-2.5 text-right font-medium">Positive</th>
+                  <th className="px-2 py-2.5 text-right font-medium">Private</th>
+                  <th className="px-2 py-2.5 text-right font-medium">Scans</th>
+                  <th className="px-2 py-2.5 text-right font-medium">Price</th>
                   {canManage ? <th className="px-2 py-2.5 text-right font-medium" /> : null}
                 </tr>
               </thead>
@@ -66,8 +82,21 @@ export function ProductsLive({
                 {products.map((product) => (
                   <tr key={product.id} className="border-b border-line last:border-0">
                     <td className="px-2 py-3">
-                      <span className="flex items-center gap-2 text-[14px] font-medium text-ink">
-                        <Package size={15} className="text-accent" /> {product.name}
+                      <span className="flex items-center gap-2">
+                        <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
+                          <Package size={15} />
+                        </span>
+                        <span className="min-w-0">
+                          <Link
+                            href={`/app/products/${product.id}`}
+                            className="block truncate text-[14px] font-medium text-ink hover:text-accent"
+                          >
+                            {product.name}
+                          </Link>
+                          <span className="block truncate text-[11.5px] text-faint">
+                            {product.category ?? 'Uncategorised'}
+                          </span>
+                        </span>
                         {product.isActive ? null : <Badge tone="neutral">hidden</Badge>}
                       </span>
                     </td>
@@ -77,8 +106,17 @@ export function ProductsLive({
                     <td className="px-2 py-3 text-right text-[14px] font-medium tabular-nums text-ink">
                       {product.rating === null ? '—' : `${product.rating.toFixed(1)}★`}
                     </td>
-                    <td className="px-2 py-3 text-right text-[14px] tabular-nums text-brand-600">
+                    <td className="px-2 py-3 text-right text-[14px] tabular-nums text-accent">
                       {product.reviews ? formatPercent(product.positive / product.reviews, 0) : '—'}
+                    </td>
+                    <td className="px-2 py-3 text-right text-[14px] tabular-nums text-ink-soft">
+                      {formatNumber(product.privateFeedback)}
+                    </td>
+                    <td className="px-2 py-3 text-right text-[14px] tabular-nums text-ink-soft">
+                      {formatNumber(product.scans)}
+                    </td>
+                    <td className="px-2 py-3 text-right text-[14px] tabular-nums text-ink-soft">
+                      {product.priceCents === null ? '—' : formatCurrency(product.priceCents / 100)}
                     </td>
                     {canManage ? (
                       <td className="px-2 py-3 text-right">

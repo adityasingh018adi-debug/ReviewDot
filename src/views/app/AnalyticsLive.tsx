@@ -1,3 +1,5 @@
+'use client'
+
 import { Card, CardHeader } from '@/components/ui/Card'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TrendChart } from '@/components/charts/TrendChart'
@@ -6,6 +8,7 @@ import { Donut } from '@/components/charts/Donut'
 import { Empty } from '@/components/ui/Empty'
 import { formatNumber, formatPercent } from '@/lib/utils'
 import type { Funnel, OutletRow, RatingBucket, SeriesPoint, TagRow } from '@/services/dashboard'
+import { OutletPicker } from '@/components/layout/ScopePickers'
 
 /**
  * Analytics for a real workspace.
@@ -54,7 +57,11 @@ export function AnalyticsLive({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Analytics" description={`${rangeLabel} · ${outletLabel}`} />
+      <PageHeader
+        title="Analytics"
+        description={`${rangeLabel} · ${outletLabel}`}
+        action={<OutletPicker />}
+      />
 
       <Card>
         <CardHeader

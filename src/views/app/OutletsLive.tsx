@@ -12,6 +12,7 @@ import { Modal } from '@/components/ui/Modal'
 import { formatNumber } from '@/lib/utils'
 import { createOutletAction, setOutletStatusAction, updateOutletAction } from '@/app-actions/workspace'
 import type { OutletDetail } from '@/services/dashboard'
+import { OutletPicker } from '@/components/layout/ScopePickers'
 
 /**
  * Outlets, from the database.
@@ -37,11 +38,14 @@ export function OutletsLive({
         title="Outlets"
         description="Every location collecting feedback"
         action={
-          canManage ? (
+          <>
+            <OutletPicker />
+            {canManage ? (
             <Button size="sm" onClick={() => setCreating(true)}>
               <Plus size={15} /> Add outlet
             </Button>
-          ) : null
+          ) : null}
+          </>
         }
       />
 

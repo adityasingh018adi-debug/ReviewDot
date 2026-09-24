@@ -163,9 +163,13 @@ deploy.
   (`app_channel_breakdown`, 0014). Never present them as that platform's review
   count: no platform reports a posting back, so such a figure would be invented.
   `configured` separates "nobody went" from "never set up".
-- The Overview renders from the same view in both modes. Demo differs only in
-  which repository answers, so the seeded reference figures still come from
-  `metrics.ts` and there is no second copy of the page to drift.
+- Overview, Products and Feedback render from the same view in both modes. Demo
+  differs only in which repository answers, so the seeded reference figures still
+  come from `metrics.ts` and there is no second copy of the page to drift. The
+  remaining seeded views (`Analytics`, `Reviews`, `Outlets`, `Customers`,
+  `QRCodes`, `Insights`, `Settings`, `ProductDetail`) are still branched on mode
+  and are the ones to unify next — while they exist, a real account sees a
+  poorer screen than the demo does.
 - Insight cards are **computed, not generated** (`src/services/insights.ts`).
   Every card states a figure that came out of the database, and a card only
   appears when there is enough behind it to mean something. A model writing

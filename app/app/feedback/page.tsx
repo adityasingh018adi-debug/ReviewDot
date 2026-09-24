@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Feedback } from '@/views/app/Feedback'
 import { FeedbackLive } from '@/views/app/FeedbackLive'
 import { dashboardContext } from '@/services/dashboard-context.server'
 import { scopeFromParams, type ScopeParams } from '@/services/scope'
@@ -20,17 +19,20 @@ function filterFrom(params: Params): { key: string; filter: FeedbackFilter } {
 
 export default async function Page({ searchParams }: { searchParams: Promise<Params> }) {
   const context = await dashboardContext()
-
-  if (context.mode !== 'live') return <Feedback />
-
   const params = await searchParams
   const scope = scopeFromParams(params)
   const { key, filter } = filterFrom(params)
 
-  const page = await context.repo.feedback(scope, {
-    ...filter,
-    cursor: typeof params.cursor === 'string' ? params.cursor : null,
-  })
+  // Counts and themes come from aggregates rather than from the page of rows,
+  // so a tab says how many there are and not how many were fetched.
+  const [page, counts, themes] = await Promise.all([
+    context.repo.feedback(scope, {
+      ...filter,
+      cursor: typeof params.cursor === 'string' ? params.cursor : null,
+    }),
+    context.repo.feedbackStatusCounts(scope),
+    context.repo.tags(scope),
+  ])
 
   const baseQuery: Record<string, string> = {}
   if (scope.rangeKey !== '30d') baseQuery.range = scope.rangeKey
@@ -42,6 +44,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Par
       outletLabel={scope.outletId ? 'one outlet' : 'all outlets'}
       page={page}
       activeFilter={key}
+      counts={counts}
+      themes={themes}
       baseQuery={baseQuery}
     />
   )

@@ -25,6 +25,7 @@ import {
   type ChannelRow,
   type ChannelKey,
   type WorkspaceCounts,
+  type FeedbackStatusCounts,
   CHANNELS,
   type TagRow,
   type TeamMember,
@@ -542,18 +543,26 @@ export class SupabaseDashboardRepo implements DashboardRepo {
         product_id: string
         product_name: string
         outlet_id: string | null
+        category: string | null
+        price_cents: number | null
         reviews: number | string
         rating: number | string | null
         positive: number | string
+        private_feedback: number | string
+        scans: number | string
         is_active: boolean
       }[]
     ).map((row) => ({
       id: row.product_id,
       name: row.product_name,
       outletId: row.outlet_id,
+      category: row.category,
+      priceCents: row.price_cents,
       reviews: int(row.reviews),
       rating: nullableFloat(row.rating),
       positive: int(row.positive),
+      privateFeedback: int(row.private_feedback),
+      scans: int(row.scans),
       isActive: row.is_active,
     }))
   }
@@ -677,6 +686,29 @@ export class SupabaseDashboardRepo implements DashboardRepo {
       campaigns: used('qr_campaigns'),
       products: used('products'),
       teamMembers: used('team_members'),
+    }
+  }
+
+  /** What the feedback tabs count — all of it, not just the page on screen. */
+  async feedbackStatusCounts(scope: DashboardScope): Promise<FeedbackStatusCounts> {
+    const supabase = await serverClient()
+    const { data, error } = await supabase.rpc('app_feedback_status_counts', {
+      p_org: this.organizationId,
+      p_from: scope.range.from,
+      p_to: scope.range.to,
+      p_outlet: scope.outletId ?? null,
+    })
+    if (error) throw error
+
+    const rows = (data ?? []) as { status: string; count: number | string }[]
+    const of = (status: string) => int(rows.find((row) => row.status === status)?.count)
+
+    return {
+      new: of('new'),
+      reviewed: of('reviewed'),
+      responded: of('responded'),
+      resolved: of('resolved'),
+      total: rows.reduce((sum, row) => sum + int(row.count), 0),
     }
   }
 

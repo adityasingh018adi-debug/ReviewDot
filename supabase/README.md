@@ -18,6 +18,7 @@ migrations/0011_limits.sql          durable rate limiting, usage metering
 migrations/0012_team.sql            colleague profiles, invitations, grants
 migrations/0013_channels.sql        Zomato and Swiggy as review destinations
 migrations/0014_channel_reporting.sql per-channel click-throughs
+migrations/0015_product_detail.sql  richer product rows, triage counts
 migrate.sh                   the runner: applies each migration once, tracked
 tests/rls_test.sql           isolation tests; every check raises on failure
 tests/auth_test.sql          signup trigger and onboarding
@@ -280,3 +281,19 @@ history.
 0013 adds `zomato` and `swiggy` to `review_destination` and contains nothing
 else: a new enum value cannot be *used* in the transaction that adds it, so the
 function that reads them waits for 0014.
+
+## Product detail and triage counts (0015)
+
+Two aggregates that existed only in the browser, computed from the seeded
+dataset — which meant a real workspace could not see either.
+
+`app_product_breakdown` gains the catalogue facts already stored against a
+product (category, price), the count of ratings at 3★ and below that never
+reached a public platform, and scans of the codes naming that product. Scans are
+counted separately rather than joined, so a product with traffic but no feedback
+is a visible row instead of a blank one. Adding output columns means dropping
+and recreating the function: `create or replace` cannot change them.
+
+`app_feedback_status_counts` is what the feedback tabs count. Counting a page of
+rows in the browser tells you how many were fetched, which stops being the same
+number as how many there are the moment paging starts.

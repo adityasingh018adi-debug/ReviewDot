@@ -119,10 +119,26 @@ export type ProductRow = {
   id: string
   name: string
   outletId: string | null
+  category: string | null
+  /** Minor units, as stored. Null when the catalogue does not price it. */
+  priceCents: number | null
   reviews: number
   rating: number | null
+  /** A count of positive reviews, not a share — divide before formatting. */
   positive: number
+  /** Ratings of 3★ and below: the part that never reached a public platform. */
+  privateFeedback: number
+  scans: number
   isActive: boolean
+}
+
+/** Feedback counted by triage status, for the tabs that filter on it. */
+export type FeedbackStatusCounts = {
+  new: number
+  reviewed: number
+  responded: number
+  resolved: number
+  total: number
 }
 
 export type TeamMember = {
@@ -206,6 +222,7 @@ export interface DashboardRepo {
   outletOptions(): Promise<OutletOption[]>
   channels(scope: DashboardScope): Promise<ChannelRow[]>
   counts(): Promise<WorkspaceCounts>
+  feedbackStatusCounts(scope: DashboardScope): Promise<FeedbackStatusCounts>
   overview(scope: DashboardScope): Promise<OverviewStats>
   series(scope: DashboardScope): Promise<SeriesPoint[]>
   outlets(scope: DashboardScope): Promise<OutletRow[]>

@@ -36,7 +36,19 @@ const busy: InsightInput = {
     { tag: 'Coffee', mentions: 40, positive: 38, avgRating: 4.8 },
     { tag: 'Waiting time', mentions: 20, positive: 2, avgRating: 3.1 },
   ],
-  products: [{ id: 'p1', name: 'Mango Cheesecake', outletId: null, reviews: 30, rating: 4.9, positive: 27, isActive: true }],
+  products: [{
+      id: 'p1',
+      name: 'Mango Cheesecake',
+      outletId: null,
+      category: 'Desserts',
+      priceCents: 38000,
+      reviews: 30,
+      rating: 4.9,
+      positive: 27,
+      privateFeedback: 2,
+      scans: 105,
+      isActive: true,
+    }],
 }
 
 describe('insightsFrom', () => {
@@ -86,7 +98,21 @@ describe('insightsFrom', () => {
         { id: 'a', name: 'Thane', scans: 4, reviews: 2, rating: 5 },
         { id: 'b', name: 'Bandra', scans: 4, reviews: 2, rating: 1 },
       ],
-      products: [{ id: 'p1', name: 'Scone', outletId: null, reviews: 1, rating: 5, positive: 1, isActive: true }],
+      products: [
+        {
+          id: 'p1',
+          name: 'Scone',
+          outletId: null,
+          category: null,
+          priceCents: null,
+          reviews: 1,
+          rating: 5,
+          positive: 1,
+          privateFeedback: 0,
+          scans: 2,
+          isActive: true,
+        },
+      ],
     }
     const cards = insightsFrom(thin)
     expect(cards.some((card) => card.kind === 'risk')).toBe(false)

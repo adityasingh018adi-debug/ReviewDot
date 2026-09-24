@@ -41,6 +41,7 @@ import {
   type ReviewItem,
   type ChannelRow,
   type WorkspaceCounts,
+  type FeedbackStatusCounts,
   type SeriesPoint,
   type TagRow,
   type TeamMember,
@@ -266,9 +267,14 @@ export class DemoDashboardRepo implements DashboardRepo {
       id: row.id,
       name: row.name,
       outletId: null,
+      category: row.category,
+      // the seeded catalogue prices in rupees; the schema stores minor units
+      priceCents: Math.round(row.price * 100),
       reviews: row.reviews,
       rating: row.reviews ? row.rating : null,
       positive: Math.round(row.positive * row.reviews),
+      privateFeedback: row.feedback,
+      scans: row.scans,
       isActive: true,
     }))
   }
@@ -322,6 +328,21 @@ export class DemoDashboardRepo implements DashboardRepo {
       { channel: 'swiggy', clicks: Math.round(clicks * 0.15), configured: true },
       { channel: 'instagram', clicks: 0, configured: false },
     ]
+  }
+
+  async feedbackStatusCounts(scope: DashboardScope): Promise<FeedbackStatusCounts> {
+    const entries = entriesIn(this.toMetricsScope(scope), baseData).filter(
+      (entry) => entry.kind === 'feedback',
+    )
+    const of = (status: string) => entries.filter((entry) => entry.status === status).length
+    return {
+      // the seeded dataset uses 'in-progress' where the database says 'reviewed'
+      new: of('new'),
+      reviewed: of('in-progress'),
+      responded: 0,
+      resolved: of('resolved'),
+      total: entries.length,
+    }
   }
 
   /** Counted from the seeded dataset, the same way the live repo counts rows. */

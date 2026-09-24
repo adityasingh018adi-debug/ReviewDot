@@ -1,8 +1,11 @@
+'use client'
+
 import { Card, CardHeader } from '@/components/ui/Card'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Empty } from '@/components/ui/Empty'
 import { formatNumber } from '@/lib/utils'
 import type { CustomerRow } from '@/services/dashboard'
+import { OutletPicker } from '@/components/layout/ScopePickers'
 
 /**
  * Customers who left a way to be reached.
@@ -23,7 +26,11 @@ export function CustomersLive({
 }) {
   return (
     <div className="space-y-6">
-      <PageHeader title="Customers" description={`${rangeLabel} · ${outletLabel}`} />
+      <PageHeader
+        title="Customers"
+        description={`${rangeLabel} · ${outletLabel}`}
+        action={<OutletPicker />}
+      />
 
       <Card>
         <CardHeader

@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { ArrowRight, ExternalLink, Pencil } from 'lucide-react'
 import { Card, CardHeader } from '@/components/ui/Card'
@@ -6,6 +8,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Empty } from '@/components/ui/Empty'
 import { Stars } from '@/components/ui/Stars'
 import type { Page, ReviewItem } from '@/services/dashboard'
+import { OutletPicker } from '@/components/layout/ScopePickers'
 
 /**
  * Reviews that actually reached a platform.
@@ -33,7 +36,11 @@ export function InboxLive({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Review inbox" description={`${rangeLabel} · ${outletLabel}`} />
+      <PageHeader
+        title="Reviews"
+        description={`${rangeLabel} · ${outletLabel}`}
+        action={<OutletPicker />}
+      />
 
       <Card>
         <CardHeader
