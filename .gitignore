@@ -9,8 +9,7 @@ npm-debug.log*
 test-results
 playwright-report
 dist-preview
-reviewdot-hostinger.zip
-reviewdot-hostinger-next.zip
+reviewdot-hostinger*.zip
 .env
 .env.local
 
