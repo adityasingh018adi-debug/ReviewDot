@@ -104,12 +104,26 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Everything except static assets and image files. The scan page, the
-     * marketing site and the AI routes all pass through so their sessions stay
-     * fresh; only the rules above actually block anything.
-     */
-    '/((?!_next/static|_next/image|favicon.svg|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2)$).*)',
-  ],
+  /*
+   * Only the paths where this middleware actually decides something: the gated
+   * ones, and the three screens a signed-in user has no use for.
+   *
+   * It used to run on everything but static assets, on the reasoning that a
+   * pass-through keeps sessions fresh. That reasoning had a cost nobody had
+   * priced. getUser() does not merely read the token, it renews it when it has
+   * expired, and Supabase rotates the refresh token when it does — the old one
+   * is spent the moment a new one is issued. Running it on every request means
+   * a page load, its prefetches and its API calls can all reach the expiry
+   * window together, each presenting the same refresh token. One wins. The rest
+   * are told the token was already used, and the adapter clears the session.
+   * The user is signed out, at random, by their own page load.
+   *
+   * Nothing outside these paths needed it. The marketing pages never read a
+   * session, /r/{code} is for customers who have no account, and the two API
+   * routes that require a session call getWorkspaceSession() themselves rather
+   * than trusting middleware — so narrowing this removes the races without
+   * weakening a single check. It also takes a round trip to the auth server off
+   * every scan, which is the one path a customer waits on.
+   */
+  matcher: ['/app/:path*', '/onboarding/:path*', '/login', '/signup', '/forgot-password'],
 }

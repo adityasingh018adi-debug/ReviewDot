@@ -34,6 +34,16 @@ Next.js 15 (App Router) · React 18 · TypeScript · Tailwind v4 · Supabase · 
 - `middleware.ts` gates `/app/*` and `/onboarding`. The path rules live in
   `src/lib/routes.ts` so they can be unit-tested; `/r/{code}` stays public
   because customers scanning a code have no account.
+- **The matcher is deliberately narrow** — the gated paths plus the three
+  signed-out-only screens, and nothing else. `getUser()` renews the token, and
+  Supabase rotates the refresh token when it does; running middleware on every
+  request lets a page load, its prefetches and its API calls all present the
+  same refresh token inside the expiry window, and the ones that lose that race
+  are told the token was already used, which clears the session. Nothing outside
+  the matcher needs it: marketing pages never read a session, `/r/{code}` is for
+  people with no account, and the API routes that require one call
+  `getWorkspaceSession()` themselves. `middleware-matcher.test.ts` fails if a
+  rule is added to `routes.ts` without a matcher entry to run it.
 - Authorize on `auth.getUser()`, never `getSession()` — the latter only decodes
   a cookie the client can write.
 - `profiles` is filled by an `on auth.users` trigger and onboarding goes through
