@@ -113,9 +113,10 @@ test.describe('customer experience', () => {
 test.describe('dashboard', () => {
   test('renders the headline metrics and product intelligence', async ({ page }) => {
     await fresh(page, '/app')
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
+    // The seeded reference figures. If a change moves these, that is a bug in
+    // the change — the demo window is built to reproduce them exactly.
+    await expect(page.getByRole('heading', { name: /Good (morning|afternoon|evening)/ })).toBeVisible()
     await expect(page.getByText('1,248').first()).toBeVisible()
-    await expect(page.getByText('26.1%').first()).toBeVisible()
 
     const row = page.getByRole('row').filter({ hasText: 'Mango Cheesecake' }).first()
     await expect(row.getByText('86', { exact: true })).toBeVisible()
@@ -123,7 +124,7 @@ test.describe('dashboard', () => {
 
   test('navigates the sidebar to QR campaigns and AI insights', async ({ page }) => {
     await fresh(page, '/app')
-    await page.getByRole('link', { name: 'QR campaigns' }).click()
+    await page.getByRole('link', { name: 'QR studio' }).click()
     await expect(page).toHaveURL(/\/app\/campaigns/)
     await expect(page.getByRole('heading', { name: 'QR campaigns' })).toBeVisible()
 

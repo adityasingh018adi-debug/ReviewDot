@@ -22,6 +22,10 @@ import {
   type RatingBucket,
   type ReviewItem,
   type SeriesPoint,
+  type ChannelRow,
+  type ChannelKey,
+  type WorkspaceCounts,
+  CHANNELS,
   type TagRow,
   type TeamMember,
 } from './dashboard'
@@ -620,6 +624,59 @@ export class SupabaseDashboardRepo implements DashboardRepo {
       planCode: row.subscriptions?.plan_code ?? null,
       planName: row.subscriptions?.plans?.name ?? null,
       subscriptionStatus: row.subscriptions?.status ?? null,
+    }
+  }
+
+  /**
+   * Per-channel click-throughs, and whether that channel is set up at all.
+   *
+   * What comes back is customers this business sent to a platform. It is not
+   * "reviews on Google" — no platform confirms a posting, so a number claiming
+   * to be their review count would be one we invented. A channel with neither
+   * traffic nor configuration is absent from the function's rows and is filled
+   * in here as an unconfigured zero, so the dashboard can always show the full
+   * set in a stable order.
+   */
+  async channels(scope: DashboardScope): Promise<ChannelRow[]> {
+    const supabase = await serverClient()
+    const { data, error } = await supabase.rpc('app_channel_breakdown', {
+      p_org: this.organizationId,
+      p_from: scope.range.from,
+      p_to: scope.range.to,
+      p_outlet: scope.outletId ?? null,
+    })
+
+    if (error) throw error
+
+    const rows = (data ?? []) as { destination: string; clicks: number; configured: boolean }[]
+    return CHANNELS.map((channel) => {
+      const row = rows.find((entry) => entry.destination === channel)
+      return {
+        channel: channel as ChannelKey,
+        clicks: int(row?.clicks),
+        configured: Boolean(row?.configured),
+      }
+    })
+  }
+
+  /**
+   * Live totals. Counted at read time rather than metered, for the same reason
+   * the quota checks count: a stored counter drifts the first time something is
+   * deleted, and then the dashboard and the limit disagree.
+   */
+  async counts(): Promise<WorkspaceCounts> {
+    const supabase = await serverClient()
+    const { data, error } = await supabase.rpc('app_quota_usage', { p_org: this.organizationId })
+    if (error) throw error
+
+    const rows = (data ?? []) as { metric: string; used: number }[]
+    const used = (metric: string) => int(rows.find((row) => row.metric === metric)?.used)
+
+    return {
+      outlets: used('outlets'),
+      campaigns: used('qr_campaigns'),
+      products: used('products'),
+      teamMembers: used('team_members'),
     }
   }
 

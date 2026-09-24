@@ -14,6 +14,7 @@ import {
   isPositiveTag,
   outletById,
   outlets as demoOutlets,
+  products as demoProducts,
   productById,
   qrCodes as demoQRCodes,
 } from '@/lib/data'
@@ -38,6 +39,8 @@ import {
   type Page,
   type RatingBucket,
   type ReviewItem,
+  type ChannelRow,
+  type WorkspaceCounts,
   type SeriesPoint,
   type TagRow,
   type TeamMember,
@@ -298,6 +301,37 @@ export class DemoDashboardRepo implements DashboardRepo {
       planCode: business.plan.toUpperCase(),
       planName: business.plan,
       subscriptionStatus: 'active',
+    }
+  }
+
+  /**
+   * Channels, on the seeded dataset.
+   *
+   * The split is derived from the seeded click-throughs rather than typed in,
+   * so it moves with the reference figures instead of drifting away from them.
+   * Instagram is left unconfigured on purpose: the demo should show both states
+   * of the card, because a real workspace almost always has some channel it has
+   * not set up yet.
+   */
+  async channels(scope: DashboardScope): Promise<ChannelRow[]> {
+    const stats = overview(this.toMetricsScope(scope), baseData)
+    const clicks = stats.googleClicks
+    return [
+      { channel: 'google', clicks: clicks - Math.round(clicks * 0.42), configured: true },
+      { channel: 'zomato', clicks: Math.round(clicks * 0.27), configured: true },
+      { channel: 'swiggy', clicks: Math.round(clicks * 0.15), configured: true },
+      { channel: 'instagram', clicks: 0, configured: false },
+    ]
+  }
+
+  /** Counted from the seeded dataset, the same way the live repo counts rows. */
+  async counts(): Promise<WorkspaceCounts> {
+    return {
+      outlets: demoOutlets.length,
+      campaigns: demoQRCodes.length,
+      products: demoProducts.length,
+      // one seeded account, and the team list says the same
+      teamMembers: 1,
     }
   }
 

@@ -16,6 +16,8 @@ migrations/0009_analytics.sql       tags, funnel and customer aggregates
 migrations/0010_products.sql        per-product feedback counts
 migrations/0011_limits.sql          durable rate limiting, usage metering
 migrations/0012_team.sql            colleague profiles, invitations, grants
+migrations/0013_channels.sql        Zomato and Swiggy as review destinations
+migrations/0014_channel_reporting.sql per-channel click-throughs
 migrate.sh                   the runner: applies each migration once, tracked
 tests/rls_test.sql           isolation tests; every check raises on failure
 tests/auth_test.sql          signup trigger and onboarding
@@ -24,6 +26,7 @@ tests/flow_test.sql          the customer journey, end to end
 tests/reporting_test.sql     dashboard aggregates, and their isolation
 tests/limits_test.sql        rate limiting and usage metering
 tests/team_test.sql          colleague visibility, invitations, seat limits
+tests/channels_test.sql      per-channel click-throughs, and their isolation
 ```
 
 ## Applying
@@ -63,8 +66,8 @@ real Supabase project.
 npm run db:test    # runs every file in tests/, in order
 ```
 
-220 checks in total — 23 isolation, 29 auth, 47 policy, 23 flow, 50 reporting,
-24 limits, 24 team.
+228 checks in total — 23 isolation, 29 auth, 47 policy, 23 flow, 50 reporting,
+24 limits, 24 team, 8 channels.
 Every suite runs inside a transaction and rolls back, so they are safe against a
 development database.
 
@@ -257,3 +260,23 @@ and `app_record_usage` from `PUBLIC`. On Supabase that leaves `service_role`
 working, because its default privileges grant execute explicitly; on a plain
 Postgres it leaves the durable rate limiter and the usage meter failing into
 their fallbacks, silently. 0012 grants those three to `service_role` by name.
+
+## Channels (0013, 0014)
+
+`app_channel_breakdown` counts **click-throughs**: customers this business sent
+to a platform, from `review_events`. It is deliberately not "reviews on Google".
+No platform confirms that a review was posted — 0001 says so where
+`review_events` is defined — so a figure presented as their review count would
+be one we invented about somebody else's business. The dashboard card says the
+same thing in the product, not only here.
+
+`configured` reports whether any live outlet actually points at that
+destination, which separates "nobody went there" from "that channel was never
+set up": different problems, different fixes. A channel with traffic but no
+configuration is still counted rather than hidden — that is what an outlet whose
+destination was removed after the fact looks like, and hiding it would lose the
+history.
+
+0013 adds `zomato` and `swiggy` to `review_destination` and contains nothing
+else: a new enum value cannot be *used* in the transaction that adds it, so the
+function that reads them waits for 0014.

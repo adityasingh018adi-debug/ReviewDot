@@ -1,51 +1,20 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useState } from 'react'
-import { Calendar, ChevronDown, LogOut, Menu, Moon, Settings, Sun } from 'lucide-react'
-import { business, outlets } from '@/lib/data'
-import { RANGE_OPTIONS } from '@/lib/metrics'
-import type { RangeKey } from '@/lib/metrics'
-import { useApp } from '@/store/app'
+import { useState } from 'react'
+import { ChevronDown, LogOut, Menu, Moon, Search, Settings, Sun } from 'lucide-react'
 import { useTheme } from '@/lib/theme'
 import { useClickOutside } from '@/lib/hooks'
-import { initialsOf, useSession } from './SessionProvider'
+import { useSession } from './SessionProvider'
+import { RangePicker } from './ScopePickers'
 import { signOutAction } from '@/app-actions/auth'
-import { switchOrganizationAction } from '@/app-actions/workspace'
-import { cn } from '@/lib/utils'
-import { Input } from '@/components/ui/Field'
-import { Button } from '@/components/ui/Button'
 
 /**
- * Moves the dashboard's scope into the URL.
+ * The dashboard chrome: what is true across every page.
  *
- * In live mode the server does the aggregation, so it has to be able to read
- * the filters before it renders — which means the query string, not the client
- * store. Demo mode still uses the store, because nothing server-side reads it.
+ * The outlet filter is not here — it belongs beside the page title, where the
+ * figures it changes are. See ScopePickers.
  */
-function useScopeParam() {
-  const router = useRouter()
-  const pathname = usePathname()
-  const params = useSearchParams()
-
-  return useCallback(
-    (changes: Record<string, string | null>) => {
-      const next = new URLSearchParams(params?.toString() ?? '')
-      for (const [key, value] of Object.entries(changes)) {
-        if (value === null) next.delete(key)
-        else next.set(key, value)
-      }
-      // paging restarts whenever the scope changes, or the cursor points into
-      // a result set that no longer exists
-      next.delete('cursor')
-      const query = next.toString()
-      router.push(query ? `${pathname}?${query}` : pathname)
-    },
-    [router, pathname, params],
-  )
-}
-
 export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
   const { theme, toggle: toggleTheme } = useTheme()
 
@@ -60,8 +29,8 @@ export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
           <Menu size={18} />
         </button>
 
-        <BusinessPicker />
-        <OutletPicker />
+        <SearchField />
+
         <div className="ml-auto flex items-center gap-2">
           <RangePicker />
           <button
@@ -75,6 +44,26 @@ export function Topbar({ onOpenNav }: { onOpenNav: () => void }) {
         </div>
       </div>
     </header>
+  )
+}
+
+/**
+ * Search.
+ *
+ * Rendered as a link rather than an input: there is no search index behind it
+ * yet, and a box that swallows what you type without answering is worse than
+ * one that takes you somewhere that can. It goes to the review inbox, which is
+ * the only thing currently searchable.
+ */
+function SearchField() {
+  return (
+    <Link
+      href="/app/inbox"
+      className="hidden h-10 min-w-[220px] flex-1 items-center gap-2.5 rounded-xl border border-line bg-surface px-3 text-[13px] text-faint transition-colors hover:bg-raised sm:flex sm:max-w-md"
+    >
+      <Search size={15} />
+      <span className="flex-1 truncate">Search reviews and feedback…</span>
+    </Link>
   )
 }
 
@@ -142,268 +131,5 @@ function AccountMenu() {
         </div>
       ) : null}
     </div>
-  )
-}
-
-function Popover({
-  label,
-  value,
-  children,
-  icon,
-  className,
-}: {
-  label: string
-  value: string
-  children: (close: () => void) => React.ReactNode
-  icon?: React.ReactNode
-  className?: string
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useClickOutside<HTMLDivElement>(() => setOpen(false))
-  return (
-    <div className={cn('relative', className)} ref={ref}>
-      <button
-        onClick={() => setOpen((value) => !value)}
-        aria-label={label}
-        aria-expanded={open}
-        className="flex h-10 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-[13px] font-medium text-ink transition-colors hover:bg-raised"
-      >
-        {icon}
-        <span className="max-w-[120px] truncate">{value}</span>
-        <ChevronDown size={14} className="text-faint" />
-      </button>
-      {open ? (
-        <div className="absolute left-0 top-12 z-50 min-w-56 rounded-2xl border border-line bg-surface p-1.5 shadow-float">
-          {children(() => setOpen(false))}
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-const itemClass = (active: boolean) =>
-  cn(
-    'flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-[13px] transition-colors',
-    active ? 'bg-accent-soft font-medium text-accent' : 'text-ink-soft hover:bg-raised',
-  )
-
-/**
- * Which workspace the dashboard is showing.
- *
- * Someone who signed up and was then invited elsewhere belongs to two, and
- * without this there was no way to reach the second one. Switching writes a
- * cookie through switchOrganizationAction, which re-checks membership server
- * side before it accepts the choice — the list below is what the UI offers, not
- * what the server allows.
- */
-function BusinessPicker() {
-  const { organization, organizations, mode } = useSession()
-  const router = useRouter()
-  const [pending, setPending] = useState(false)
-
-  // The organization comes from the session, so a real account never sees the
-  // demo business in its own workspace.
-  const name = organization?.name ?? business.name
-  const mark = mode === 'demo' ? business.mark : initialsOf(name, 'RD')
-
-  const switchTo = async (id: string, close: () => void) => {
-    setPending(true)
-    try {
-      const form = new FormData()
-      form.set('organizationId', id)
-      const result = await switchOrganizationAction(form)
-      if (!result.error) {
-        close()
-        // the scope in the query string belongs to the workspace we are leaving
-        router.push('/app')
-        router.refresh()
-      }
-    } finally {
-      setPending(false)
-    }
-  }
-
-  return (
-    <Popover
-      label="Select business"
-      value={name}
-      icon={
-        <span className="grid size-6 place-items-center rounded-md bg-accent text-[10px] font-semibold text-on-accent">
-          {mark}
-        </span>
-      }
-    >
-      {(close) => (
-        <>
-          {mode === 'demo' ? (
-            <>
-              <button className={itemClass(true)} onClick={close}>
-                {name}
-                <span className="text-[11px] text-faint">{business.plan}</span>
-              </button>
-              <p className="px-3 py-2 text-[12px] text-faint">
-                Demo workspace — no account is signed in.
-              </p>
-            </>
-          ) : (
-            <>
-              {organizations.map((workspace) => (
-                <button
-                  key={workspace.id}
-                  disabled={pending}
-                  className={itemClass(workspace.id === organization?.id)}
-                  onClick={() => {
-                    if (workspace.id === organization?.id) close()
-                    else void switchTo(workspace.id, close)
-                  }}
-                >
-                  {workspace.name}
-                </button>
-              ))}
-              {organizations.length < 2 ? (
-                <p className="px-3 py-2 text-[12px] leading-relaxed text-faint">
-                  You belong to one workspace. You will see others here once you are invited to them.
-                </p>
-              ) : null}
-            </>
-          )}
-        </>
-      )}
-    </Popover>
-  )
-}
-
-function OutletPicker() {
-  const session = useSession()
-  const live = session.mode === 'live'
-  const setParam = useScopeParam()
-  const params = useSearchParams()
-
-  const storeOutletId = useApp((s) => s.outletId)
-  const setOutlet = useApp((s) => s.setOutlet)
-
-  const options = live ? session.outlets : outlets.map((o) => ({ id: o.id, name: o.name, city: o.city }))
-  const outletId = live ? (params?.get('outlet') ?? 'all') : storeOutletId
-  const current = options.find((outlet) => outlet.id === outletId)
-
-  const choose = (id: string | 'all') => {
-    if (live) setParam({ outlet: id === 'all' ? null : id })
-    else setOutlet(id)
-  }
-
-  return (
-    <Popover label="Select outlet" value={current ? current.name : 'All outlets'} className="hidden sm:block">
-      {(close) => (
-        <>
-          <button
-            className={itemClass(outletId === 'all')}
-            onClick={() => {
-              choose('all')
-              close()
-            }}
-          >
-            All outlets
-          </button>
-          {options.map((outlet) => (
-            <button
-              key={outlet.id}
-              className={itemClass(outletId === outlet.id)}
-              onClick={() => {
-                choose(outlet.id)
-                close()
-              }}
-            >
-              {outlet.name}
-              <span className="text-[11px] text-faint">{outlet.city}</span>
-            </button>
-          ))}
-        </>
-      )}
-    </Popover>
-  )
-}
-
-function RangePicker() {
-  const session = useSession()
-  const live = session.mode === 'live'
-  const setParam = useScopeParam()
-  const params = useSearchParams()
-
-  const storeRangeKey = useApp((s) => s.rangeKey)
-  const storeCustom = useApp((s) => s.customRange)
-  const setRange = useApp((s) => s.setRange)
-
-  const rangeKey = live ? ((params?.get('range') as RangeKey | null) ?? '30d') : storeRangeKey
-  const customRange = live
-    ? { from: params?.get('from') ?? '', to: params?.get('to') ?? '' }
-    : storeCustom
-
-  const apply = (key: RangeKey, custom?: { from: string; to: string }) => {
-    if (live) {
-      setParam({
-        range: key === '30d' ? null : key,
-        from: custom?.from ?? null,
-        to: custom?.to ?? null,
-      })
-    } else {
-      setRange(key, custom)
-    }
-  }
-
-  const [draft, setDraft] = useState(customRange)
-  const label =
-    rangeKey === 'custom' && customRange.from && customRange.to
-      ? `${customRange.from} → ${customRange.to}`
-      : (RANGE_OPTIONS.find((option) => option.key === rangeKey)?.label ?? '30 days')
-
-  return (
-    <Popover label="Select date range" value={label} icon={<Calendar size={15} className="text-faint" />}>
-      {(close) => (
-        <>
-          {RANGE_OPTIONS.filter((option) => option.key !== 'custom').map((option) => (
-            <button
-              key={option.key}
-              className={itemClass(rangeKey === option.key)}
-              onClick={() => {
-                apply(option.key as RangeKey)
-                close()
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
-          <div className="mt-1 border-t border-line p-2.5">
-            <p className="mb-2 text-[12px] font-medium text-ink">Custom range</p>
-            <div className="flex items-center gap-2">
-              <Input
-                type="date"
-                aria-label="From date"
-                className="h-9 px-2 text-[12px]"
-                value={draft.from}
-                onChange={(event) => setDraft({ ...draft, from: event.target.value })}
-              />
-              <Input
-                type="date"
-                aria-label="To date"
-                className="h-9 px-2 text-[12px]"
-                value={draft.to}
-                onChange={(event) => setDraft({ ...draft, to: event.target.value })}
-              />
-            </div>
-            <Button
-              size="sm"
-              className="mt-2 w-full"
-              disabled={!draft.from || !draft.to}
-              onClick={() => {
-                apply('custom', draft)
-                close()
-              }}
-            >
-              Apply
-            </Button>
-          </div>
-        </>
-      )}
-    </Popover>
   )
 }

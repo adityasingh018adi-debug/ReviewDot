@@ -29,6 +29,32 @@ export type OverviewStats = {
 
 export type SeriesPoint = { date: string; scans: number; reviews: number }
 
+/** The platforms a review can be sent to. Mirrors the review_destination enum. */
+export const CHANNELS = ['google', 'zomato', 'swiggy', 'instagram'] as const
+export type ChannelKey = (typeof CHANNELS)[number]
+
+/**
+ * One review channel.
+ *
+ * `clicks` is customers this business sent to that platform — not reviews
+ * posted there, which no platform reports back. `configured` separates "nobody
+ * went" from "never set up": two different problems with two different fixes,
+ * and the card says which.
+ */
+export type ChannelRow = {
+  channel: ChannelKey
+  clicks: number
+  configured: boolean
+}
+
+/** Live totals, counted rather than metered. */
+export type WorkspaceCounts = {
+  outlets: number
+  campaigns: number
+  products: number
+  teamMembers: number
+}
+
 export type OutletRow = {
   id: string
   name: string
@@ -178,6 +204,8 @@ export type OutletOption = { id: string; name: string; city?: string | null }
 export interface DashboardRepo {
   /** Every outlet the viewer can see, for the outlet picker. Cheap and unscoped by date. */
   outletOptions(): Promise<OutletOption[]>
+  channels(scope: DashboardScope): Promise<ChannelRow[]>
+  counts(): Promise<WorkspaceCounts>
   overview(scope: DashboardScope): Promise<OverviewStats>
   series(scope: DashboardScope): Promise<SeriesPoint[]>
   outlets(scope: DashboardScope): Promise<OutletRow[]>

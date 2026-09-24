@@ -159,6 +159,13 @@ deploy.
   `src/lib/metrics.ts` through `DemoDashboardRepo`, so the reference figures
   stay exact — that is the only thing `src/lib/data.ts` and the seeded views are
   still for.
+- Review **channels** show click-throughs — customers sent to a platform
+  (`app_channel_breakdown`, 0014). Never present them as that platform's review
+  count: no platform reports a posting back, so such a figure would be invented.
+  `configured` separates "nobody went" from "never set up".
+- The Overview renders from the same view in both modes. Demo differs only in
+  which repository answers, so the seeded reference figures still come from
+  `metrics.ts` and there is no second copy of the page to drift.
 - Insight cards are **computed, not generated** (`src/services/insights.ts`).
   Every card states a figure that came out of the database, and a card only
   appears when there is enough behind it to mean something. A model writing
@@ -203,5 +210,5 @@ npm run lint
 npm test           # Vitest
 npm run test:e2e   # Playwright (builds and starts the app itself)
 npm run db:migrate # apply outstanding migrations (tracked, once each)
-npm run db:test    # 220 database checks: isolation, auth, policy, flow, reporting, limits, team
+npm run db:test    # 228 database checks: isolation, auth, policy, flow, reporting, limits, team, channels
 ```

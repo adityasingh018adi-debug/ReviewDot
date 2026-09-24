@@ -13,18 +13,18 @@
   --font-display: 'Space Grotesk', 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-hand: 'Caveat', 'Segoe Script', cursive;
 
-  /* Brand — premium dark green through soft mint */
-  --color-brand-50: #eefbf4;
-  --color-brand-100: #d6f5e4;
-  --color-brand-200: #a9e9c8;
-  --color-brand-300: #6fd6a6;
-  --color-brand-400: #34bc85;
-  --color-brand-500: #199c6b;
-  --color-brand-600: #0f7b54;
-  --color-brand-700: #0c6145;
-  --color-brand-800: #0b4c37;
-  --color-brand-900: #072e22;
-  --color-brand-950: #041a13;
+  /* Brand — indigo through violet */
+  --color-brand-50: #eef1ff;
+  --color-brand-100: #e0e5ff;
+  --color-brand-200: #c7cffe;
+  --color-brand-300: #a5affc;
+  --color-brand-400: #8b87f8;
+  --color-brand-500: #7a63f1;
+  --color-brand-600: #6d43e4;
+  --color-brand-700: #5e33c9;
+  --color-brand-800: #4d2ca3;
+  --color-brand-900: #402a82;
+  --color-brand-950: #26184f;
 
   /* Charcoal */
   --color-coal-950: #080a09;
@@ -43,16 +43,26 @@
    * Chart palette — validated for CVD separation, lightness band, chroma and
    * contrast against both chart surfaces (see README: data visualisation).
    */
-  --color-chart-1: #0f7b54;
-  --color-chart-2: #2a78d6;
-  --color-chart-3: #eda100;
+  --color-chart-1: #6d43e4;
+  --color-chart-2: #2a86d6;
+  --color-chart-3: #e08a00;
   /* Ordinal ramp, 5★ → 1★: one hue, monotone lightness */
-  --color-rank-1: #0b4c37;
-  --color-rank-2: #0f7b54;
-  --color-rank-3: #199c6b;
-  --color-rank-4: #34bc85;
-  --color-rank-5: #a9e9c8;
-  --color-grid: #e7e8e3;
+  --color-rank-1: #402a82;
+  --color-rank-2: #5e33c9;
+  --color-rank-3: #7a63f1;
+  --color-rank-4: #a5affc;
+  --color-rank-5: #d7dbfd;
+  --color-grid: #e9eaf0;
+
+  /*
+   * Review channels. These are other companies' brand colours, used only to
+   * identify their card — never as a data series, which is what the chart
+   * tokens above are for.
+   */
+  --color-channel-google: #4285f4;
+  --color-channel-zomato: #e23744;
+  --color-channel-swiggy: #fc8019;
+  --color-channel-instagram: #c13584;
 
   --color-star: #f5a524;
   --color-danger: #d14343;
@@ -60,17 +70,17 @@
   --color-info: #3b7fd1;
 
   /* Semantic surfaces — redefined for dark mode below */
-  --color-canvas: #fbfbf9;
+  --color-canvas: #f6f7fb;
   --color-surface: #ffffff;
-  --color-raised: #f5f5f2;
-  --color-ink: #0b0d0c;
-  --color-ink-soft: #3d4542;
-  --color-muted: #6b736e;
-  --color-faint: #97a09b;
-  --color-line: #e7e8e3;
-  --color-line-strong: #d7d9d2;
-  --color-accent: #0c6145;
-  --color-accent-soft: #eefbf4;
+  --color-raised: #f2f3f9;
+  --color-ink: #0f1222;
+  --color-ink-soft: #3a3f57;
+  --color-muted: #6b7189;
+  --color-faint: #959bb2;
+  --color-line: #e6e8f0;
+  --color-line-strong: #d3d7e6;
+  --color-accent: #6d43e4;
+  --color-accent-soft: #eef1ff;
   --color-on-accent: #ffffff;
 
   --shadow-soft: 0 1px 2px rgb(11 13 12 / 0.04), 0 8px 24px -12px rgb(11 13 12 / 0.12);
@@ -128,28 +138,28 @@
 }
 
 [data-theme='dark'] {
-  --color-canvas: #080a09;
-  --color-surface: #0e1211;
-  --color-raised: #141917;
-  --color-ink: #f2f4f2;
-  --color-ink-soft: #cdd4d0;
-  --color-muted: #9aa49f;
-  --color-faint: #717c77;
-  --color-line: #1d2422;
-  --color-line-strong: #2a332f;
-  --color-accent: #34bc85;
-  --color-accent-soft: #0d1f18;
+  --color-canvas: #080a12;
+  --color-surface: #0e1120;
+  --color-raised: #151a2c;
+  --color-ink: #f2f3f8;
+  --color-ink-soft: #cdd1e0;
+  --color-muted: #9aa0b8;
+  --color-faint: #717892;
+  --color-line: #1e2438;
+  --color-line-strong: #2b3350;
+  --color-accent: #8b87f8;
+  --color-accent-soft: #191a3a;
   --color-on-accent: #04140d;
 
-  --color-chart-1: #23a877;
-  --color-chart-2: #3987e5;
-  --color-chart-3: #c98500;
-  --color-rank-1: #a9e9c8;
-  --color-rank-2: #6fd6a6;
-  --color-rank-3: #34bc85;
-  --color-rank-4: #199c6b;
-  --color-rank-5: #0b4c37;
-  --color-grid: #1d2422;
+  --color-chart-1: #8b87f8;
+  --color-chart-2: #4f9bec;
+  --color-chart-3: #d79a1f;
+  --color-rank-1: #d7dbfd;
+  --color-rank-2: #a5affc;
+  --color-rank-3: #8b87f8;
+  --color-rank-4: #6d43e4;
+  --color-rank-5: #402a82;
+  --color-grid: #1e2438;
 
   --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.6);
   --shadow-card: 0 1px 3px rgb(0 0 0 / 0.5), 0 12px 32px -16px rgb(0 0 0 / 0.7);
