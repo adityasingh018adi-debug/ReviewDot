@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { serverClient } from '@/services/supabase.server'
-import { ACTIVE_ORG_COOKIE } from '@/services/auth.server'
+import { ACTIVE_ORG_COOKIE, SupabaseAuthService } from '@/services/auth.server'
 import { isSupabaseConfigured } from '@/services/supabase'
 import { absoluteUrl, safeNextPath } from '@/lib/site-url'
 
@@ -88,7 +88,32 @@ export async function signInAction(form: FormData): Promise<AuthResult> {
   if (!data.session) return { error: 'Could not start a session. Please try again.' }
 
   revalidatePath('/', 'layout')
-  redirect(safeNextPath(field(form, 'next')))
+  redirect(await destinationAfterSignIn(data.session.user.id, field(form, 'next')))
+}
+
+/**
+ * Where a sign-in lands.
+ *
+ * A session is not a destination. Someone signing in for the first time after
+ * confirming their address has no organization yet, and sending them to the
+ * dashboard so it can bounce them to onboarding is a hop this function already
+ * knows the answer to.
+ *
+ * An explicit `next` always wins, and that is not a nicety: a person following
+ * an invitation has no workspace of their own, so deciding from membership
+ * alone would send them to onboarding to create a second business instead of
+ * joining the one that invited them.
+ *
+ * Membership is read rather than `getUser()` re-asked, because the credentials
+ * were just checked — revalidating the token one line after minting it is a
+ * round trip that answers a question nobody asked.
+ */
+async function destinationAfterSignIn(userId: string, requested: string): Promise<string> {
+  const explicit = safeNextPath(requested, '')
+  if (explicit) return explicit
+
+  const memberships = await new SupabaseAuthService().getMemberships(userId)
+  return memberships.length ? '/app' : '/onboarding'
 }
 
 export async function signOutAction(): Promise<void> {

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { serverClient } from '@/services/supabase.server'
 import { isSupabaseConfigured } from '@/services/supabase'
+import { SupabaseAuthService } from '@/services/auth.server'
 import { safeNextPath } from '@/lib/site-url'
 
 /**
@@ -16,7 +17,9 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
-  const next = safeNextPath(searchParams.get('next'))
+  // Empty rather than '/app', so a round trip with no destination of its own
+  // can be decided from what the account actually has.
+  const next = safeNextPath(searchParams.get('next'), '')
   const code = searchParams.get('code')
 
   if (!isSupabaseConfigured()) {
@@ -34,10 +37,27 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await serverClient()
-  const { error } = await supabase.auth.exchangeCodeForSession(code)
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
     return NextResponse.redirect(new URL('/login?error=link', origin))
   }
 
-  return NextResponse.redirect(new URL(next, origin))
+  return NextResponse.redirect(new URL(await destination(next, data.session?.user.id), origin))
+}
+
+/**
+ * Where the round trip ends.
+ *
+ * Same rule as signInAction: an explicit destination wins, because somebody
+ * arriving from an invitation has no workspace of their own and onboarding
+ * would have them create a second business rather than join the one that asked
+ * for them. With nothing explicit, decide from membership, so a first sign-in
+ * goes to onboarding directly instead of bouncing off the dashboard.
+ */
+async function destination(explicit: string, userId: string | undefined): Promise<string> {
+  if (explicit) return explicit
+  if (!userId) return '/app'
+
+  const memberships = await new SupabaseAuthService().getMemberships(userId)
+  return memberships.length ? '/app' : '/onboarding'
 }
