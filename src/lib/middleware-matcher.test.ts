@@ -71,6 +71,7 @@ describe('the middleware matcher', () => {
       '/auth/callback',
       '/api/ai/review',
       '/api/ai/assistant',
+      '/api/health',
       '/reset-password',
     ]) {
       expect(covered(path), `${path} should not go through middleware`).toBe(false)
