@@ -36,13 +36,3 @@ export function useSession(): UiSession {
   if (!session) throw new Error('useSession() must be used inside the dashboard layout')
   return session
 }
-
-/** First letters of the first two words, e.g. "Ritika Shah" → "RS". */
-export function initialsOf(name: string, fallback = '?'): string {
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  if (!words.length) return fallback
-  return words
-    .slice(0, 2)
-    .map((word) => word[0]!.toUpperCase())
-    .join('')
-}

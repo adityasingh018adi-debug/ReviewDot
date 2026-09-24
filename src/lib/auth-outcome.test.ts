@@ -43,3 +43,23 @@ describe('classifyAuth', () => {
     expect(classifyAuth(null, { name: 'SomethingNew' })).toBe('unavailable')
   })
 })
+
+describe('a refresh token that was already used', () => {
+  // Supabase retires a refresh token the moment it issues a replacement. Two
+  // requests from one page load reaching the expiry window together means one
+  // rotates and the other is told it is spent — the session is alive, and the
+  // loser must not conclude anything about who this person is.
+  it('is a race between requests, not a sign-out', () => {
+    const spent = { name: 'AuthApiError', status: 400, message: 'Invalid Refresh Token: Already Used' }
+    expect(classifyAuth(null, spent)).toBe('unavailable')
+  })
+
+  it('still reads a refresh token that never existed as signed out', () => {
+    const missing = {
+      name: 'AuthApiError',
+      status: 400,
+      message: 'Invalid Refresh Token: Refresh Token Not Found',
+    }
+    expect(classifyAuth(null, missing)).toBe('signed-out')
+  })
+})

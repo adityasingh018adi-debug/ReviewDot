@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { config } from '../../middleware'
-import { PROTECTED_PREFIXES, SIGNED_OUT_ONLY, isProtectedPath, isSignedOutOnlyPath } from './routes'
+import {
+  PROTECTED_PREFIXES,
+  SESSION_READING,
+  SIGNED_OUT_ONLY,
+  isProtectedPath,
+  isSignedOutOnlyPath,
+} from './routes'
 
 /**
  * The matcher and the rules have to agree.
@@ -41,6 +47,18 @@ describe('the middleware matcher', () => {
     }
   })
 
+  it('covers the public paths that still read a session', () => {
+    // A Server Component cannot write cookies. If one renews the access token,
+    // the old refresh token is spent and the replacement is discarded, which
+    // signs the person out on their next request. Middleware is the only place
+    // in the request that can keep it, so these have to pass through even
+    // though nothing here is gated.
+    for (const prefix of SESSION_READING) {
+      expect(isProtectedPath(prefix), `${prefix} must not be gated`).toBe(false)
+      expect(covered(`${prefix}/2f6c8a1b`), `${prefix}/* must refresh in middleware`).toBe(true)
+    }
+  })
+
   it('does not run where it would only spend a refresh token', () => {
     // Each of these either has no session to refresh or authorises itself, and
     // every extra pass through getUser() is another racer for the one refresh
@@ -50,7 +68,6 @@ describe('the middleware matcher', () => {
       '/pricing',
       '/product',
       '/r/2f6c8a1b',
-      '/join/2f6c8a1b',
       '/auth/callback',
       '/api/ai/review',
       '/api/ai/assistant',

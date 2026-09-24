@@ -118,6 +118,16 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  /*
+                   * Nine links, prefetched together on every dashboard page
+                   * load, are nine more requests through middleware carrying
+                   * the same refresh token. When the access token is at its
+                   * expiry they all try to rotate it at once, one wins and the
+                   * rest are told the token was already used. Navigation stays
+                   * instant without this — these are server-rendered pages
+                   * behind a spinner either way.
+                   */
+                  prefetch={false}
                   onClick={onNavigate}
                   aria-current={active ? 'page' : undefined}
                   className={cn(

@@ -129,12 +129,26 @@ export const config = {
    * are told the token was already used, and the adapter clears the session.
    * The user is signed out, at random, by their own page load.
    *
-   * Nothing outside these paths needed it. The marketing pages never read a
+   * Nothing outside these paths needs it. The marketing pages never read a
    * session, /r/{code} is for customers who have no account, and the two API
    * routes that require a session call getWorkspaceSession() themselves rather
    * than trusting middleware — so narrowing this removes the races without
-   * weakening a single check. It also takes a round trip to the auth server off
+   * weakening a single check.
+   *
+   * The converse is just as load-bearing, and cost a session to learn: a path
+   * whose server components *do* read a session has to be here even when it is
+   * public, because a Server Component cannot write cookies and so cannot keep
+   * the refreshed token it just paid for. It also takes a round trip to the auth server off
    * every scan, which is the one path a customer waits on.
    */
-  matcher: ['/app/:path*', '/onboarding/:path*', '/login', '/signup', '/forgot-password'],
+  matcher: [
+    '/app/:path*',
+    '/onboarding/:path*',
+    '/login',
+    '/signup',
+    '/forgot-password',
+    // Not gated — it refreshes here because a Server Component cannot. See
+    // SESSION_READING in routes.ts.
+    '/join/:path*',
+  ],
 }

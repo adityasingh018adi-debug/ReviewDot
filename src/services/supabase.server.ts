@@ -33,6 +33,9 @@ function isReadOnlyCookieStore(error: unknown): boolean {
   return /can only be modified in a Server Action or Route Handler/i.test(message)
 }
 
+/** Request-scoped client cache, keyed on the request's own cookie store. */
+const perRequest = new WeakMap<object, SupabaseClient>()
+
 function assertServerOnly(name: string): void {
   if (typeof window !== 'undefined') {
     throw new Error(`${name} is server-only — it must never run in the browser`)
@@ -51,16 +54,45 @@ export async function serverClient(): Promise<SupabaseClient> {
 
   const store = await cookies()
 
-  return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  // One client per request, and this is the load-bearing part.
+  //
+  // A single dashboard render calls this many times over — middleware, the
+  // layout's session read, its membership read, the page's own context, the
+  // outlet picker. Each call used to build its own Supabase client, each with
+  // its own auth state, each seeing the same access token in the same cookie
+  // jar. When that token is at its expiry they all try to renew it at once, and
+  // Supabase retires a refresh token the instant it issues a replacement: one
+  // wins, and the rest are told theirs was already used. A losing client treats
+  // that as the end of the session and writes deleted cookies, which is how a
+  // valid session was destroyed by its own page load and the person landed back
+  // on the login form. Seventeen redemptions of one token, on one reload, is
+  // what the reproduction measured.
+  //
+  // Sharing the client means one refresh, one rotation, one set of cookies.
+  // Keyed on the cookie store because Next hands out exactly one per request,
+  // and weakly so nothing is retained after it.
+  const cached = perRequest.get(store)
+  if (cached) return cached
+
+  const client = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
       getAll: () => store.getAll(),
       setAll: (list) => {
         try {
           for (const { name, value, options } of list) store.set(name, value, options)
         } catch (error) {
-          // A Server Component may not write cookies, and that refusal is
-          // expected: middleware refreshes the session on every request, so
-          // nothing is lost by ignoring it.
+          // A Server Component may not write cookies, and Next refuses the
+          // write. That refusal is expected — but "expected" is not the same as
+          // "harmless", which is what this comment used to claim.
+          //
+          // If the client renewed the token on its way here, the old refresh
+          // token is already spent and this is the replacement being thrown
+          // away. The browser then replays a token the auth server has retired,
+          // and the next request is signed out. The defence is that the renewal
+          // happens in middleware, which can write: every path whose server
+          // components read a session goes through it (see SESSION_READING in
+          // routes.ts), so by the time one runs the token is fresh and there is
+          // nothing here to lose.
           //
           // Anything else is not expected, and swallowing it is how a sign-in
           // silently fails to persist — the action redirects to a dashboard the
@@ -73,6 +105,9 @@ export async function serverClient(): Promise<SupabaseClient> {
       },
     },
   })
+
+  perRequest.set(store, client)
+  return client
 }
 
 /**

@@ -35,6 +35,16 @@ export function classifyAuth(user: unknown, error: MaybeAuthError): AuthOutcome 
   // Could not reach the auth server at all.
   if (error.name === 'AuthRetryableFetchError') return 'unavailable'
 
+  // "Already Used" is not a statement about this person. Supabase retires a
+  // refresh token the instant it issues a replacement, so when two requests
+  // from the same page load reach the expiry window together, one rotates the
+  // token and the rest are told theirs is spent. The session is alive — it just
+  // belongs to the cookies the winner wrote. Reading that as "signed out" logs
+  // somebody out by their own page load, which is exactly the report. A token
+  // that was never valid says "Refresh Token Not Found" instead, and that one
+  // is a real answer.
+  if (/already used/i.test(error.message ?? '')) return 'unavailable'
+
   // The auth server answered and rejected the token. That is a real answer.
   if (error.status === 400 || error.status === 401 || error.status === 403) {
     return 'signed-out'

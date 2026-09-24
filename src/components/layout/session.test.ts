@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { initialsOf } from './SessionProvider'
+import { initialsOf } from './initials'
 
 describe('initialsOf', () => {
   it('takes the first letter of the first two words', () => {
