@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from './supabase'
+import { reportError } from '@/lib/observability'
 
 /**
  * Supabase, server side. Two clients, and the difference matters:
@@ -21,6 +22,16 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from './supabas
  * Both throw in a browser, so a stray import cannot leak either key into client
  * JavaScript.
  */
+
+/**
+ * Next refuses cookie writes from a Server Component by design, with a specific
+ * message. Matching on it keeps the expected refusal quiet without hiding a
+ * real failure behind the same catch.
+ */
+function isReadOnlyCookieStore(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return /can only be modified in a Server Action or Route Handler/i.test(message)
+}
 
 function assertServerOnly(name: string): void {
   if (typeof window !== 'undefined') {
@@ -46,9 +57,18 @@ export async function serverClient(): Promise<SupabaseClient> {
       setAll: (list) => {
         try {
           for (const { name, value, options } of list) store.set(name, value, options)
-        } catch {
-          // Server Components may not write cookies. The middleware refreshes
-          // the session on every request, so nothing is lost by ignoring this.
+        } catch (error) {
+          // A Server Component may not write cookies, and that refusal is
+          // expected: middleware refreshes the session on every request, so
+          // nothing is lost by ignoring it.
+          //
+          // Anything else is not expected, and swallowing it is how a sign-in
+          // silently fails to persist — the action redirects to a dashboard the
+          // browser has no session for, which bounces straight back to the
+          // login form and looks exactly like a wrong password. Record it.
+          if (!isReadOnlyCookieStore(error)) {
+            reportError('auth.cookie', error, { names: list.map((c) => c.name).join(' ') })
+          }
         }
       },
     },

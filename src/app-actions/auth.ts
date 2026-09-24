@@ -2,7 +2,9 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import { serverClient } from '@/services/supabase.server'
+import { ACTIVE_ORG_COOKIE } from '@/services/auth.server'
 import { isSupabaseConfigured } from '@/services/supabase'
 import { absoluteUrl, safeNextPath } from '@/lib/site-url'
 
@@ -94,6 +96,14 @@ export async function signOutAction(): Promise<void> {
     const supabase = await serverClient()
     await supabase.auth.signOut()
   }
+
+  // The workspace preference belongs to whoever just left. It is only ever
+  // honoured when it matches a membership the database returned, so a leftover
+  // cannot grant anything — but on a shared browser it is still one account's
+  // organization id sitting in the next person's cookie jar.
+  const store = await cookies()
+  store.delete(ACTIVE_ORG_COOKIE)
+
   revalidatePath('/', 'layout')
   redirect('/login')
 }

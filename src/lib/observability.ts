@@ -26,6 +26,7 @@ export type ErrorScope =
   | 'campaign.write'
   | 'rate.limit'
   | 'quota.check'
+  | 'auth.cookie'
 
 /** Ids and counts only. Anything free-text belongs in the database, not here. */
 export type ErrorMeta = Record<string, string | number | boolean | null | undefined>
