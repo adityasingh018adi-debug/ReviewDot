@@ -19,6 +19,7 @@ migrations/0012_team.sql            colleague profiles, invitations, grants
 migrations/0013_channels.sql        Zomato and Swiggy as review destinations
 migrations/0014_channel_reporting.sql per-channel click-throughs
 migrations/0015_product_detail.sql  richer product rows, triage counts
+migrations/0016_product_panels.sql  per-product distribution and tags
 migrate.sh                   the runner: applies each migration once, tracked
 tests/rls_test.sql           isolation tests; every check raises on failure
 tests/auth_test.sql          signup trigger and onboarding
@@ -67,7 +68,7 @@ real Supabase project.
 npm run db:test    # runs every file in tests/, in order
 ```
 
-228 checks in total — 23 isolation, 29 auth, 47 policy, 23 flow, 50 reporting,
+231 checks in total — 23 isolation, 29 auth, 47 policy, 23 flow, 53 reporting,
 24 limits, 24 team, 8 channels.
 Every suite runs inside a transaction and rolls back, so they are safe against a
 development database.
@@ -297,3 +298,19 @@ and recreating the function: `create or replace` cannot change them.
 `app_feedback_status_counts` is what the feedback tabs count. Counting a page of
 rows in the browser tells you how many were fetched, which stops being the same
 number as how many there are the moment paging starts.
+
+## Per-product panels (0016)
+
+`app_rating_distribution` and `app_tag_breakdown` gain an optional `p_product`.
+Defaulting it to null leaves every existing caller identical, and the product
+page passes it so its distribution and tag panels describe that product rather
+than the page of rows that happened to be fetched.
+
+Both are dropped and recreated rather than replaced. Postgres treats an added
+parameter as a new overload, and leaving the four-argument version in place
+would give PostgREST two candidates to resolve between by argument name —
+quietly, and not always the one you meant.
+
+`reporting_test.sql` pins that the narrowed answer is strictly smaller than the
+workspace-wide one. An optional parameter that ignored its argument would pass
+every other check in that file.

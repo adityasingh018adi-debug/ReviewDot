@@ -308,6 +308,33 @@ select assert(
     where product_id = 'c1000000-3333-0000-0000-00000000000a') = 4.67,
   'and averages its rating');
 
+-- ------------------------------------------------- narrowing to one product
+
+-- The product page's distribution and tag panels ask the same two aggregates
+-- the dashboard does, with p_product set. An optional parameter that quietly
+-- ignored its argument would pass every check above, so these pin that it does
+-- not: the narrowed answer must be smaller than the workspace-wide one.
+
+select assert(
+  (select sum(count) from app_rating_distribution('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now(), null,
+     'c1000000-3333-0000-0000-00000000000a')) = 3,
+  'a rating distribution narrowed to one product counts only that product');
+
+select assert(
+  (select sum(count) from app_rating_distribution('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now()))
+  > (select sum(count) from app_rating_distribution('c1000000-0000-0000-0000-00000000000a',
+       now() - interval '2 days', now(), null,
+       'c1000000-3333-0000-0000-00000000000a')),
+  'and is strictly smaller than the whole workspace, so the filter is doing something');
+
+select assert(
+  (select coalesce(sum(mentions), 0) from app_tag_breakdown('c1000000-0000-0000-0000-00000000000a',
+     now() - interval '2 days', now(), null,
+     'c1000000-3333-0000-0000-00000000000f')) = 0,
+  'tags for a product nobody mentioned come back empty rather than borrowed');
+
 -- a product nobody has mentioned still appears; "no feedback yet" is information
 insert into products (id, organization_id, outlet_id, name) values
   ('c1000000-3333-0000-0000-00000000000f', 'c1000000-0000-0000-0000-00000000000a',

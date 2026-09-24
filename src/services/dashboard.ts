@@ -228,11 +228,12 @@ export interface DashboardRepo {
   overview(scope: DashboardScope): Promise<OverviewStats>
   series(scope: DashboardScope): Promise<SeriesPoint[]>
   outlets(scope: DashboardScope): Promise<OutletRow[]>
-  ratingDistribution(scope: DashboardScope): Promise<RatingBucket[]>
+  /** `productId` narrows to one product, for its own page. */
+  ratingDistribution(scope: DashboardScope, productId?: string): Promise<RatingBucket[]>
   feedback(scope: DashboardScope, filter?: FeedbackFilter): Promise<Page<FeedbackItem>>
   outletsDetail(scope: DashboardScope): Promise<OutletDetail[]>
   campaigns(scope: DashboardScope): Promise<CampaignRow[]>
-  tags(scope: DashboardScope): Promise<TagRow[]>
+  tags(scope: DashboardScope, productId?: string): Promise<TagRow[]>
   funnel(scope: DashboardScope): Promise<Funnel>
   customers(scope: DashboardScope): Promise<CustomerRow[]>
   reviews(scope: DashboardScope, filter?: FeedbackFilter): Promise<Page<ReviewItem>>

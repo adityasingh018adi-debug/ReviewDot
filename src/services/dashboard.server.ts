@@ -172,13 +172,14 @@ export class SupabaseDashboardRepo implements DashboardRepo {
     }))
   }
 
-  async ratingDistribution(scope: DashboardScope): Promise<RatingBucket[]> {
+  async ratingDistribution(scope: DashboardScope, productId?: string): Promise<RatingBucket[]> {
     const supabase = await serverClient()
     const { data, error } = await supabase.rpc('app_rating_distribution', {
       p_org: this.organizationId,
       p_from: scope.range.from.toISOString(),
       p_to: scope.range.to.toISOString(),
       p_outlet: scope.outletId,
+      p_product: productId ?? null,
     })
     if (error) throw error
 
@@ -374,13 +375,14 @@ export class SupabaseDashboardRepo implements DashboardRepo {
     })
   }
 
-  async tags(scope: DashboardScope): Promise<TagRow[]> {
+  async tags(scope: DashboardScope, productId?: string): Promise<TagRow[]> {
     const supabase = await serverClient()
     const { data, error } = await supabase.rpc('app_tag_breakdown', {
       p_org: this.organizationId,
       p_from: scope.range.from.toISOString(),
       p_to: scope.range.to.toISOString(),
       p_outlet: scope.outletId,
+      p_product: productId ?? null,
     })
     if (error) throw error
 

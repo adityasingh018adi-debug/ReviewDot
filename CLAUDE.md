@@ -173,6 +173,11 @@ deploy.
   (`demoDestination`), split in the same proportions the demo channel cards
   report, so the platform tabs and the list under them agree. On a real
   workspace that comes from `review_events` and is not derived at all.
+- A product's own distribution and tag panels pass `productId` into
+  `ratingDistribution` and `tags` (0016), so they describe the product rather
+  than the page of rows fetched. Tags are split into liked/raised by the
+  **rating of the feedback they appeared in**, never by the word: "Portion Size"
+  is praise at five stars and a complaint at two.
 - Insight cards are **computed, not generated** (`src/services/insights.ts`).
   Every card states a figure that came out of the database, and a card only
   appears when there is enough behind it to mean something. A model writing
@@ -217,5 +222,5 @@ npm run lint
 npm test           # Vitest
 npm run test:e2e   # Playwright (builds and starts the app itself)
 npm run db:migrate # apply outstanding migrations (tracked, once each)
-npm run db:test    # 228 database checks: isolation, auth, policy, flow, reporting, limits, team, channels
+npm run db:test    # 231 database checks: isolation, auth, policy, flow, reporting, limits, team, channels
 ```

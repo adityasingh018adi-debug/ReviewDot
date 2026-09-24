@@ -104,8 +104,11 @@ export class DemoDashboardRepo implements DashboardRepo {
     }))
   }
 
-  async ratingDistribution(scope: DashboardScope): Promise<RatingBucket[]> {
-    return ratingDistribution(entriesIn(this.toMetricsScope(scope), baseData))
+  async ratingDistribution(scope: DashboardScope, productId?: string): Promise<RatingBucket[]> {
+    const metricsScope = productId
+      ? { ...this.toMetricsScope(scope), productId }
+      : this.toMetricsScope(scope)
+    return ratingDistribution(entriesIn(metricsScope, baseData))
   }
 
   async feedback(scope: DashboardScope, filter: FeedbackFilter = {}): Promise<Page<FeedbackItem>> {
@@ -187,8 +190,11 @@ export class DemoDashboardRepo implements DashboardRepo {
       }))
   }
 
-  async tags(scope: DashboardScope): Promise<TagRow[]> {
-    const entries = entriesIn(this.toMetricsScope(scope), baseData)
+  async tags(scope: DashboardScope, productId?: string): Promise<TagRow[]> {
+    const metricsScope = productId
+      ? { ...this.toMetricsScope(scope), productId }
+      : this.toMetricsScope(scope)
+    const entries = entriesIn(metricsScope, baseData)
     const counts = new Map<string, { mentions: number; positive: number; total: number }>()
 
     for (const entry of entries) {
