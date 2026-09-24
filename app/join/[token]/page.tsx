@@ -75,7 +75,10 @@ export default async function Page({ params }: { params: Promise<{ token: string
   }
 
   const roleLabel = ROLE_LABELS[invite.role as Role] ?? invite.role
-  const workspace = await getWorkspaceSession()
+  // Only used to decide which call to action to show. If it cannot be read,
+  // show the signed-out one — accepting re-checks the caller anyway, and the
+  // invitee most often has no account yet.
+  const workspace = await getWorkspaceSession().catch(() => null)
 
   return (
     <Shell>

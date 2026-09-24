@@ -3,6 +3,7 @@ import { serverClient } from './supabase.server'
 import { isSupabaseConfigured } from './supabase'
 import type { AuthService, Membership, SessionUser } from './types'
 import type { Role } from '@/lib/permissions'
+import { AuthUnavailableError, classifyAuth } from '@/lib/auth-outcome'
 
 /**
  * Identity, server side.
@@ -46,7 +47,14 @@ export class SupabaseAuthService implements AuthService {
     // decodes the cookie, which a client could have written — never authorize
     // on it.
     const { data, error } = await supabase.auth.getUser()
-    if (error || !data.user) return null
+    const outcome = classifyAuth(data.user, error)
+
+    // Null means "signed out", and callers act on it by sending the person to
+    // the login page. It must therefore never mean "the auth server did not
+    // answer": that is how a valid session ends up staring at a login form.
+    // Raise instead, so the failure is visible and recoverable.
+    if (outcome === 'unavailable') throw new AuthUnavailableError()
+    if (outcome === 'signed-out' || !data.user) return null
 
     const { data: profile } = await supabase
       .from('profiles')

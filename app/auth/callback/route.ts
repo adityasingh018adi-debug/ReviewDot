@@ -58,6 +58,10 @@ async function destination(explicit: string, userId: string | undefined): Promis
   if (explicit) return explicit
   if (!userId) return '/app'
 
-  const memberships = await new SupabaseAuthService().getMemberships(userId)
+  // As in signInAction: a failed read is not an answer about membership, and
+  // `/app` re-resolves it behind a layout that can retry.
+  const memberships = await new SupabaseAuthService().getMemberships(userId).catch(() => null)
+  if (!memberships) return '/app'
+
   return memberships.length ? '/app' : '/onboarding'
 }

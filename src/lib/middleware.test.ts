@@ -20,6 +20,8 @@ const ROTATED = [
 
 /** A Supabase client whose getUser() refreshes, as the real one does. */
 let signedIn = true
+/** Set to simulate the auth server failing rather than answering. */
+let authError: { name: string; status?: number } | null = null
 
 vi.mock('@supabase/ssr', () => ({
   createServerClient: (_url: string, _key: string, options: { cookies: { setAll: (l: unknown[]) => void } }) => ({
@@ -27,6 +29,7 @@ vi.mock('@supabase/ssr', () => ({
       getUser: async () => {
         // the refresh writes rotated cookies through the adapter
         options.cookies.setAll(ROTATED)
+        if (authError) return { data: { user: null }, error: authError }
         return { data: { user: signedIn ? { id: 'u1' } : null }, error: null }
       },
     },
@@ -51,6 +54,7 @@ describe('middleware session refresh', () => {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key'
     delete process.env.NEXT_PUBLIC_DEMO_MODE
     signedIn = true
+    authError = null
   })
 
   it('keeps the rotated session when it passes a request through', async () => {
@@ -84,5 +88,39 @@ describe('middleware session refresh', () => {
     expect(cookieNames(response)).toEqual(
       expect.arrayContaining(['sb-access-token', 'sb-refresh-token']),
     )
+  })
+})
+
+describe('when the auth server cannot be reached', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://project.supabase.co'
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key'
+    delete process.env.NEXT_PUBLIC_DEMO_MODE
+    signedIn = true
+  })
+
+  it('does not send a signed-in user to the login page over a network failure', async () => {
+    // The reported symptom, exactly: a correct password, a real session, and
+    // the very next request lands back on the login form. Nothing here says
+    // this person is logged out — only that we could not ask.
+    authError = { name: 'AuthRetryableFetchError' }
+    const response = await run('/app')
+    expect(response.status).not.toBe(307)
+    expect(response.headers.get('location')).toBeNull()
+  })
+
+  it('does not sign anyone out because the auth server returned a 500', async () => {
+    authError = { name: 'AuthApiError', status: 503 }
+    const response = await run('/app/settings')
+    expect(response.status).not.toBe(307)
+  })
+
+  it('still turns away a request the auth server actually rejected', async () => {
+    // a rejected token is a real answer, and it must still gate the dashboard
+    authError = { name: 'AuthApiError', status: 401 }
+    const response = await run('/app')
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toContain('/login')
   })
 })

@@ -112,7 +112,15 @@ async function destinationAfterSignIn(userId: string, requested: string): Promis
   const explicit = safeNextPath(requested, '')
   if (explicit) return explicit
 
-  const memberships = await new SupabaseAuthService().getMemberships(userId)
+  // A membership read that fails says nothing about whether this person has a
+  // workspace, so it must not answer the question. `/app` is the safe default:
+  // its layout resolves the same membership again and sends a brand-new user on
+  // to onboarding, or offers a retry if the database is still unreachable.
+  // Guessing `/onboarding` here would ask an established owner to create a
+  // second business.
+  const memberships = await new SupabaseAuthService().getMemberships(userId).catch(() => null)
+  if (!memberships) return '/app'
+
   return memberships.length ? '/app' : '/onboarding'
 }
 

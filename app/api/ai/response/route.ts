@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getWorkspaceSession } from '@/services/auth.server'
+import { AuthUnavailableError } from '@/lib/auth-outcome'
 import { isSupabaseConfigured } from '@/services/supabase'
 import { checkLimit, retryAfterSeconds } from '@/services/rate-limit.server'
 import { firstIssue, responseDraftSchema } from '@/lib/schemas'
@@ -39,7 +40,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Not available on this deployment.' }, { status: 503 })
   }
 
-  const workspace = await getWorkspaceSession()
+  // Three answers, not two. A session that cannot be read is not a signed-out
+  // one, and answering 401 would tell the browser to send this person back to
+  // the sign-in screen they already passed.
+  let workspace: Awaited<ReturnType<typeof getWorkspaceSession>>
+  try {
+    workspace = await getWorkspaceSession()
+  } catch (error) {
+    if (error instanceof AuthUnavailableError) {
+      return NextResponse.json(
+        { error: 'We could not verify your session just now. Please try again.' },
+        { status: 503, headers: { 'retry-after': '5' } },
+      )
+    }
+    throw error
+  }
+
   if (!workspace?.active) {
     return NextResponse.json({ error: 'Sign in to draft a reply.' }, { status: 401 })
   }

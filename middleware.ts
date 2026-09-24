@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { resolveMode } from '@/lib/app-mode'
 import { isProtectedPath, isSignedOutOnlyPath } from '@/lib/routes'
+import { classifyAuth } from '@/lib/auth-outcome'
 
 /**
  * The authentication gate.
@@ -77,9 +78,19 @@ export async function middleware(request: NextRequest) {
 
   // getUser() revalidates against the auth server; getSession() would trust a
   // cookie the client controls.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data, error } = await supabase.auth.getUser()
+  const outcome = classifyAuth(data.user, error)
+
+  // Could not ask is not an answer about who this person is. The error used to
+  // be destructured away, which made a timeout, a 5xx or a rate limit
+  // indistinguishable from signing out — so a good session, one request after a
+  // correct password, was sent back to the login form. Let the request through
+  // instead: the page re-checks, and if the auth server is still unreachable it
+  // renders an error the person can retry rather than a login form implying
+  // they got their password wrong.
+  if (outcome === 'unavailable') return response
+
+  const user = outcome === 'authenticated' ? data.user : null
 
   if (isProtectedPath(pathname)) {
     if (!user) {

@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { LoadFailed } from '@/components/layout/LoadFailed'
 import { NotConfigured } from '@/components/layout/NotConfigured'
 import { initialsOf, type UiSession } from '@/components/layout/SessionProvider'
 import { getWorkspaceSession } from '@/services/auth.server'
 import { dashboardContext } from '@/services/dashboard-context.server'
 import { appMode } from '@/lib/app-mode'
+import { AuthUnavailableError } from '@/lib/auth-outcome'
 import { business } from '@/lib/data'
 
 export const metadata: Metadata = {
@@ -57,7 +59,19 @@ export default async function Layout({ children }: { children: React.ReactNode }
     return <AppLayout session={session}>{children}</AppLayout>
   }
 
-  const workspace = await getWorkspaceSession()
+  // The session read is the one thing this layout does that can fail for a
+  // reason that is not the person's. Next's error boundaries live *inside*
+  // their segment's layout, so `app/app/error.tsx` never sees this one —
+  // handling it here is what stops "could not reach the auth server" from
+  // falling through to the generic error page.
+  let workspace: Awaited<ReturnType<typeof getWorkspaceSession>>
+  try {
+    workspace = await getWorkspaceSession()
+  } catch (error) {
+    if (error instanceof AuthUnavailableError) return <LoadFailed standalone />
+    throw error
+  }
+
   if (!workspace) redirect('/login')
 
   // Signed in but with no organization yet — finish signing up first.

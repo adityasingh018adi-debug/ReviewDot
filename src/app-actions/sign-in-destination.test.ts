@@ -91,6 +91,16 @@ describe('signInAction', () => {
     expect(redirect).not.toHaveBeenCalled()
   })
 
+  it('still lands somewhere useful when the membership read fails', async () => {
+    // The password was correct and a session exists. A failed lookup says
+    // nothing about whether this person has a workspace, so it must not answer
+    // the question — /app resolves it again behind a layout that can retry.
+    // Choosing /onboarding here would ask an established owner to create a
+    // second business.
+    getMemberships.mockRejectedValue(new Error('auth server unreachable'))
+    await expect(signIn({})).rejects.toThrow('REDIRECT:/app')
+  })
+
   it('does not redirect when no session came back', async () => {
     signInWithPassword.mockResolvedValue({ data: { session: null }, error: null })
     const result = await signIn({})
