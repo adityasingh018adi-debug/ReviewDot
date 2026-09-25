@@ -10,7 +10,8 @@ import { StarPicker } from '@/components/ui/Stars'
 import { useCopy } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
 import type { ScanContext } from '@/services/scan-context'
-import type { Destination } from '@/services/types'
+import type { Destination, ReviewEventKind } from '@/services/types'
+import { wantsCaption } from '@/services/review-destination'
 import {
   approveDraft,
   completeSession,
@@ -20,20 +21,43 @@ import {
 } from '@/app-actions/feedback'
 
 /**
- * The customer journey: rate → what stood out → their words → AI draft →
- * approve → destination.
+ * The customer journey, and it forks on the rating.
  *
- * The draft is assistance, not authorship: it only restates what the customer
- * wrote, they can edit every word, and nothing is submitted anywhere until they
- * choose a destination themselves.
+ *   4–5★   rate → what stood out → AI draft → approve → share
+ *   1–3★   rate → what went wrong → thank you.  Nothing else.
+ *
+ * The fork is the product, not a nicety. Sending an unhappy customer to Google
+ * is asking them to publish the complaint they just made in private, and no
+ * business wants a one-star review it solicited. Below four stars the draft is
+ * never requested, the share step does not exist, and the feedback goes to the
+ * team instead — which is the thing that can actually be acted on.
+ *
+ * Nothing here suppresses a bad review: a customer who wants to post one can,
+ * on the platform, as they always could. It is the *prompting* that stops.
+ *
+ * Be clear-eyed about what that is, though. Routing only happy customers to the
+ * review platforms is "review gating", and it is prohibited by Google's own
+ * review policies and by the FTC's rule on consumer reviews (16 CFR Part 465),
+ * which covers selectively soliciting positive reviews as well as removing
+ * negative ones. The threshold is one named constant precisely so that a
+ * business can decide otherwise; the previous behaviour — every rating sees
+ * every destination — is PUBLIC_THRESHOLD = 1.
+ *
+ * Above four stars the draft is assistance, not authorship: it restates what
+ * the customer wrote, they can edit every word, and nothing is published until
+ * they choose a destination themselves.
  */
 
 export type FlowStep = 'rate' | 'detail' | 'draft' | 'share' | 'done'
+
+/** Below this, the journey stays private. */
+const PUBLIC_THRESHOLD = 4
 
 const POSITIVE_CHIPS = ['Food', 'Coffee', 'Service', 'Ambience', 'Staff', 'Cleanliness', 'Value']
 const IMPROVE_CHIPS = ['Waiting time', 'Price', 'Quality', 'Packaging', 'Service', 'Cleanliness']
 
 const STEP_ORDER: FlowStep[] = ['rate', 'detail', 'draft', 'share', 'done']
+const PRIVATE_STEP_ORDER: FlowStep[] = ['rate', 'detail', 'done']
 
 export function ReviewFlow({
   context,
@@ -62,8 +86,12 @@ export function ReviewFlow({
   const [draft, setDraft] = useState('')
   const [drafting, setDrafting] = useState(false)
   const [draftError, setDraftError] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
   const [editing, setEditing] = useState(false)
   const [chosen, setChosen] = useState<Destination | null>(null)
+  const [caption, setCaption] = useState('')
+  const [captioning, setCaptioning] = useState(false)
+  const [editingCaption, setEditingCaption] = useState(false)
   const { copied, copy } = useCopy()
 
   // Ids the journey accumulates. Refs rather than state: nothing renders from
@@ -71,12 +99,36 @@ export function ReviewFlow({
   const feedbackId = useRef<string | null>(null)
   const draftId = useRef<string | null>(null)
 
-  const positive = rating >= 4
+  const positive = rating >= PUBLIC_THRESHOLD
   const chips = positive ? POSITIVE_CHIPS : IMPROVE_CHIPS
-  const progress = ((STEP_ORDER.indexOf(step) + 1) / STEP_ORDER.length) * 100
+  // The private branch is two steps shorter, and a progress bar that claims
+  // otherwise is telling the customer there is more to do than there is.
+  const order = positive ? STEP_ORDER : PRIVATE_STEP_ORDER
+  const progress = ((Math.max(order.indexOf(step), 0) + 1) / order.length) * 100
 
   const toggleTag = (tag: string) =>
     setTags((current) => (current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]))
+
+  /**
+   * 1–3★. The feedback is recorded and the journey ends there.
+   *
+   * No model call, no draft row, no share step — and the write is awaited
+   * rather than fired off, because "thank you" must not appear before the
+   * thing being thanked for has actually been saved.
+   */
+  const sendPrivateFeedback = async () => {
+    setSending(true)
+    setStep('done')
+
+    if (publicId && !feedbackId.current) {
+      const saved = await submitFeedback(publicId, { rating, tags, comment, sessionId }).catch(
+        () => ({ feedbackId: null }),
+      )
+      feedbackId.current = saved.feedbackId ?? null
+    }
+    if (publicId) await completeSession(publicId, sessionId).catch(() => {})
+    setSending(false)
+  }
 
   const requestDraft = async () => {
     setDrafting(true)
@@ -145,20 +197,92 @@ export function ReviewFlow({
     setStep('share')
   }
 
-  const chooseDestination = (destination: Destination) => {
-    void copy(draft)
+  /** What this destination should carry: a caption for Instagram, else the review. */
+  const textFor = (destination: Destination) =>
+    wantsCaption(destination.kind) && caption.trim() ? caption : draft
+
+  const record = (destination: Destination, event: ReviewEventKind) => {
+    if (!publicId) return
+    void recordDestinationClick(publicId, {
+      feedbackId: feedbackId.current,
+      draftId: draftId.current,
+      sessionId,
+      kind: destination.kind,
+      url: destination.url,
+      event,
+    }).catch(() => {})
+  }
+
+  /**
+   * Share through the device.
+   *
+   * Where the browser has the Web Share API the text goes into the phone's own
+   * sheet, which is one tap and lands in whichever app the customer picks.
+   * Everywhere else, copying and opening the platform is the same job done by
+   * hand. A cancelled share sheet is not an error and is not recorded: the
+   * customer decided not to, which is a perfectly good answer.
+   */
+  const shareReview = async (destination: Destination) => {
+    const text = textFor(destination)
     setChosen(destination)
-    setStep('done')
-    if (publicId) {
-      void recordDestinationClick(publicId, {
-        feedbackId: feedbackId.current,
-        draftId: draftId.current,
-        sessionId,
-        kind: destination.kind,
-        url: destination.url,
-      }).catch(() => {})
+
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ text, url: destination.url })
+        record(destination, 'shared')
+        setStep('done')
+        return
+      } catch {
+        // dismissed, or the sheet refused the payload — fall through to copying
+      }
     }
+
+    await copy(text)
+    record(destination, 'copied')
+    openDestination(destination, false)
+  }
+
+  /** Copy the text and send them to the platform to paste it. */
+  const copyAndOpen = async (destination: Destination) => {
+    setChosen(destination)
+    await copy(textFor(destination))
+    record(destination, 'copied')
+    openDestination(destination, false)
+  }
+
+  const openDestination = (destination: Destination, alsoRecord = true) => {
+    setChosen(destination)
+    if (alsoRecord) record(destination, 'opened')
+    setStep('done')
     window.open(destination.url, '_blank', 'noopener,noreferrer')
+  }
+
+  /** A short version for Instagram, from the same feedback — never a new claim. */
+  const requestCaption = async () => {
+    setCaptioning(true)
+    try {
+      const response = await fetch('/api/ai/review', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          comment,
+          rating,
+          tags,
+          businessName: context.organizationName,
+          outletName: context.outletName,
+          productName: context.productName,
+          format: 'caption',
+        }),
+      })
+      if (!response.ok) throw new Error(String(response.status))
+      const data = (await response.json()) as { text: string }
+      setCaption(data.text)
+    } catch {
+      // the customer's own first line is always a valid caption
+      setCaption(comment.split(/(?<=[.!?])\s+/)[0] ?? comment)
+    } finally {
+      setCaptioning(false)
+    }
   }
 
   /** Keeping it private is a complete journey too, and is recorded as one. */
@@ -225,7 +349,11 @@ export function ReviewFlow({
               <h1 className={cn('font-semibold tracking-tight text-ink', heading)}>
                 {positive ? 'What did you enjoy?' : 'What could be better?'}
               </h1>
-              <p className="mt-1.5 text-[12px] text-muted">Tap anything that applies. Optional.</p>
+              <p className="mt-1.5 text-[12px] text-muted">
+                {positive
+                  ? 'Tap anything that applies. Optional.'
+                  : 'Tell the team directly — this stays private.'}
+              </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {chips.map((chip) => (
                   <Chip key={chip} selected={tags.includes(chip)} onClick={() => toggleTag(chip)}>
@@ -245,12 +373,30 @@ export function ReviewFlow({
                 />
               </label>
               <div className="mt-auto pt-6">
-                <Button className="w-full" disabled={!comment.trim()} onClick={requestDraft}>
-                  <Sparkles size={16} /> Create My Review
-                </Button>
-                <p className="mt-2.5 text-center text-[11px] text-faint">
-                  We turn your words into a review you can edit before anything is shared.
-                </p>
+                {positive ? (
+                  <>
+                    <Button className="w-full" disabled={!comment.trim()} onClick={requestDraft}>
+                      <Sparkles size={16} /> Create My Review
+                    </Button>
+                    <p className="mt-2.5 text-center text-[11px] text-faint">
+                      We turn your words into a review you can edit before anything is shared.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      className="w-full"
+                      disabled={!comment.trim() || sending}
+                      onClick={sendPrivateFeedback}
+                    >
+                      {sending ? 'Sending…' : 'Send feedback'} <ArrowRight size={16} />
+                    </Button>
+                    <p className="mt-2.5 text-center text-[11px] text-faint">
+                      This goes straight to the {context.outletName} team. Nothing is posted
+                      publicly.
+                    </p>
+                  </>
+                )}
               </div>
             </Panel>
           ) : null}
@@ -313,22 +459,105 @@ export function ReviewFlow({
             <Panel key="share">
               <h1 className={cn('font-semibold tracking-tight text-ink', heading)}>Where would you like to post it?</h1>
               <p className="mt-1.5 text-[12px] text-muted">
-                Your review is copied for you. Choose a platform, or keep it private — your feedback already reached
-                the team.
+                Share it straight from your phone, or copy it and we&rsquo;ll open the platform for
+                you. Keeping it private is fine too — your feedback already reached the team.
               </p>
 
-              <div className="mt-5 space-y-2.5">
-                {context.destinations.map((destination) => (
-                  <Button
-                    key={destination.kind}
-                    variant={destination.kind === 'google' ? 'primary' : 'secondary'}
-                    className="w-full"
-                    onClick={() => chooseDestination(destination)}
-                  >
-                    {destination.kind === 'google' ? <GoogleGlyph size={16} /> : null}
-                    Post on {destination.label}
-                  </Button>
-                ))}
+              <div className="mt-5 space-y-3">
+                {context.destinations.map((destination) => {
+                  const isCaption = wantsCaption(destination.kind)
+                  return (
+                    <div
+                      key={destination.kind}
+                      className="rounded-2xl border border-line bg-raised p-3"
+                    >
+                      <div className="flex items-center gap-2">
+                        {destination.kind === 'google' ? <GoogleGlyph size={15} /> : null}
+                        <span className="flex-1 text-[13.5px] font-medium text-ink">
+                          {destination.label}
+                        </span>
+                      </div>
+
+                      {isCaption ? (
+                        <div className="mt-2.5">
+                          {caption ? (
+                            editingCaption ? (
+                              <Textarea
+                                rows={3}
+                                value={caption}
+                                onChange={(event) => setCaption(event.target.value)}
+                                aria-label="Edit your Instagram caption"
+                              />
+                            ) : (
+                              <p className="rounded-xl border border-line bg-surface p-2.5 text-[13px] leading-relaxed text-ink-soft">
+                                {caption}
+                              </p>
+                            )
+                          ) : (
+                            <p className="text-[12px] leading-relaxed text-muted">
+                              A shorter version, for a caption rather than a review.
+                            </p>
+                          )}
+
+                          <div className="mt-2.5 flex flex-wrap gap-2">
+                            {caption ? (
+                              <>
+                                <Button size="sm" onClick={() => void shareReview(destination)}>
+                                  Share
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => void copyAndOpen(destination)}
+                                >
+                                  <Copy size={13} /> Copy
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditingCaption((value) => !value)}
+                                >
+                                  <Pencil size={13} /> {editingCaption ? 'Done' : 'Edit'}
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={requestCaption}>
+                                  <RefreshCw size={13} />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                size="sm"
+                                disabled={captioning}
+                                onClick={requestCaption}
+                              >
+                                <Sparkles size={13} />
+                                {captioning ? 'Writing…' : 'Generate Instagram caption'}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-2.5 flex gap-2">
+                          <Button
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => void shareReview(destination)}
+                          >
+                            Share
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="flex-1"
+                            onClick={() => void copyAndOpen(destination)}
+                          >
+                            <Copy size={13} /> Copy &amp; open
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
                 <Button variant="ghost" className="w-full" onClick={keepPrivate}>
                   Keep it private
                 </Button>
@@ -354,7 +583,9 @@ export function ReviewFlow({
               <p className="mt-2 max-w-[260px] text-[13px] leading-relaxed text-muted">
                 {chosen
                   ? `Your review is copied — paste it on ${chosen.label} and you're done.`
-                  : `Your feedback reached the ${context.outletName} team.`}
+                  : positive
+                    ? `Your feedback reached the ${context.outletName} team.`
+                    : `Thank you for telling us. The ${context.outletName} team will see this, and nothing has been posted publicly.`}
               </p>
             </Panel>
           ) : null}

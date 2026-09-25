@@ -9,7 +9,7 @@ import { attempt, reportError } from '@/lib/observability'
 import { checkQuota, recordUsage } from '@/services/quota.server'
 import { clientIp } from '@/lib/rate-limit'
 import { checkLimit } from '@/services/rate-limit.server'
-import type { DestinationKind } from '@/services/types'
+import type { DestinationKind, ReviewEventKind } from '@/services/types'
 
 /**
  * The customer journey, recorded.
@@ -315,6 +315,11 @@ export async function recordDestinationClick(
     sessionId: string | null
     kind: DestinationKind
     url: string
+    /**
+     * What the customer did. Defaults to the weakest true statement: the
+     * platform was opened. Never 'submitted' — see 0017.
+     */
+    event?: ReviewEventKind
   },
 ): Promise<void> {
   if (!isSupabaseConfigured()) return
@@ -331,36 +336,49 @@ export async function recordDestinationClick(
   const destination = context.destinations.find((entry) => entry.kind === input.kind)
   if (!destination) return
 
-  await attempt('review.event', { campaignId: context.campaignId, kind: input.kind }, async () => {
-    const supabase = serviceClient()
+  // A caller could ask for 'submitted'; no caller is allowed to have it. Only
+  // a platform confirming a posting could justify that, and none does.
+  const event: ReviewEventKind =
+    input.event && input.event !== 'submitted' ? input.event : 'opened'
 
-    const feedbackId =
-      input.feedbackId && (await belongsToCampaign('customer_feedback', input.feedbackId, context))
-        ? input.feedbackId
-        : null
-    const draftId =
-      input.draftId && (await belongsToCampaign('ai_review_drafts', input.draftId, context))
-        ? input.draftId
-        : null
+  await attempt(
+    'review.event',
+    { campaignId: context.campaignId, kind: input.kind, event },
+    async () => {
+      const supabase = serviceClient()
 
-    const { error } = await supabase.from('review_events').insert({
-      organization_id: context.organizationId,
-      outlet_id: context.outletId,
-      campaign_id: context.campaignId,
-      feedback_id: feedbackId,
-      draft_id: draftId,
-      destination: input.kind,
-      destination_url: destination.url,
-    })
-    if (error) throw error
+      const feedbackId =
+        input.feedbackId && (await belongsToCampaign('customer_feedback', input.feedbackId, context))
+          ? input.feedbackId
+          : null
+      const draftId =
+        input.draftId && (await belongsToCampaign('ai_review_drafts', input.draftId, context))
+          ? input.draftId
+          : null
 
-    if (input.sessionId && (await belongsToCampaign('customer_sessions', input.sessionId, context))) {
-      await supabase
-        .from('customer_sessions')
-        .update({ completed_at: new Date().toISOString() })
-        .eq('id', input.sessionId)
-    }
-  })
+      const { error } = await supabase.from('review_events').insert({
+        organization_id: context.organizationId,
+        outlet_id: context.outletId,
+        campaign_id: context.campaignId,
+        feedback_id: feedbackId,
+        draft_id: draftId,
+        destination: input.kind,
+        destination_url: destination.url,
+        kind: event,
+      })
+      if (error) throw error
+
+      if (
+        input.sessionId &&
+        (await belongsToCampaign('customer_sessions', input.sessionId, context))
+      ) {
+        await supabase
+          .from('customer_sessions')
+          .update({ completed_at: new Date().toISOString() })
+          .eq('id', input.sessionId)
+      }
+    },
+  )
 }
 
 /** Marks the journey finished when the customer keeps their review private. */

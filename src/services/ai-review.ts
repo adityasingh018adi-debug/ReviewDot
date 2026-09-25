@@ -52,6 +52,17 @@ Rules, without exception:
 - No hashtags, no emoji, no star ratings in the text.
 - Return only the review text.`
 
+const CAPTION_SYSTEM_PROMPT = `You turn a customer's own feedback into a short social caption.
+
+Rules, without exception:
+- Use only what the customer said. Never add facts, prices, wait times, staff names,
+  dishes, visit counts, ratings or comparisons they did not mention.
+- Never invent enthusiasm the customer did not express. Match their sentiment.
+- One or two short sentences, first person, under 150 characters.
+- At most two hashtags, drawn from what the customer actually mentioned. No emoji
+  beyond one, and only if it fits.
+- Return only the caption.`
+
 function buildUserPrompt(input: ReviewDraftInput): string {
   return [
     `Business: ${input.businessName}`,
@@ -64,6 +75,9 @@ function buildUserPrompt(input: ReviewDraftInput): string {
     `"""${input.comment}"""`,
     '',
     `Tone: ${input.tone ?? 'natural'}`,
+    input.format === 'caption'
+      ? 'Write this as a short social caption, not a review.'
+      : null,
   ]
     .filter(Boolean)
     .join('\n')
@@ -94,6 +108,19 @@ export class LocalAIReviewService implements AIReviewService {
       : ''
 
     const body = sentences.join(' ')
+
+    // A caption is the customer's first sentence and their chips as hashtags —
+    // shorter, never different. Inventing a punchier line would be inventing.
+    if (input.format === 'caption') {
+      const lead = sentences[0] ?? input.comment.trim()
+      const tags = input.tags
+        .slice(0, 2)
+        .map((tag) => `#${tag.replace(/[^A-Za-z0-9]/g, '')}`)
+        .filter((tag) => tag.length > 1)
+      const caption = [lead, tags.join(' ')].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
+      return { text: caption, offline: true, ungrounded: groundingIssues(input.comment, caption) }
+    }
+
     const text = [input.rating >= 4 ? opener : '', body, highlights]
       .filter(Boolean)
       .join(' ')
@@ -109,4 +136,8 @@ function formatList(items: string[]): string {
   return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
 }
 
-export { SYSTEM_PROMPT as REVIEW_SYSTEM_PROMPT, buildUserPrompt as buildReviewPrompt }
+export {
+  SYSTEM_PROMPT as REVIEW_SYSTEM_PROMPT,
+  CAPTION_SYSTEM_PROMPT,
+  buildUserPrompt as buildReviewPrompt,
+}

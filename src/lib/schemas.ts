@@ -23,6 +23,7 @@ export const reviewDraftSchema = z.object({
   outletName: bounded(120).default(''),
   productName: bounded(120).optional(),
   tone: z.enum(['natural', 'warm', 'concise', 'detailed']).default('natural'),
+  format: z.enum(['review', 'caption']).default('review'),
 })
 
 export const responseDraftSchema = z.object({

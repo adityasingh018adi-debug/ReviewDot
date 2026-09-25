@@ -14,6 +14,15 @@ import type { Plan, QuotaCheck, QuotaKey } from '@/lib/plans'
 
 export type ReviewTone = 'natural' | 'warm' | 'concise' | 'detailed'
 
+/**
+ * A Google review and an Instagram caption are not the same text.
+ *
+ * Four sentences of review prose under a photo reads as the wrong species of
+ * writing, so the customer is offered a short version for Instagram rather than
+ * the long one with the line breaks removed.
+ */
+export type ReviewFormat = 'review' | 'caption'
+
 export type ReviewDraftInput = {
   /** Exactly what the customer typed. Never paraphrased before it reaches here. */
   comment: string
@@ -24,6 +33,8 @@ export type ReviewDraftInput = {
   outletName: string
   productName?: string
   tone?: ReviewTone
+  /** Defaults to a full review. */
+  format?: ReviewFormat
 }
 
 export type ReviewDraft = {
@@ -57,7 +68,31 @@ export interface AIResponseService {
 
 /* ------------------------------------------------- review destinations */
 
-export type DestinationKind = 'google' | 'tripadvisor' | 'facebook' | 'instagram' | 'custom'
+export type DestinationKind =
+  | 'google'
+  | 'zomato'
+  | 'swiggy'
+  | 'instagram'
+  | 'tripadvisor'
+  | 'facebook'
+  | 'custom'
+
+/**
+ * What a customer did with a review, in the order it can happen.
+ *
+ * Deliberately not a single "posted" flag. No platform reports a posting back,
+ * so the only honest record is what we watched the customer do: the draft was
+ * written, they changed it, they shared or copied it, they opened the platform.
+ * `submitted` exists for a platform that one day confirms it, and is never
+ * inferred from a click.
+ */
+export type ReviewEventKind =
+  | 'generated'
+  | 'edited'
+  | 'shared'
+  | 'copied'
+  | 'opened'
+  | 'submitted'
 
 export type Destination = {
   kind: DestinationKind

@@ -10,10 +10,23 @@ import type { Destination, DestinationKind, ReviewDestinationService } from './t
 
 export const DESTINATION_LABELS: Record<DestinationKind, string> = {
   google: 'Google',
+  zomato: 'Zomato',
+  swiggy: 'Swiggy',
+  instagram: 'Instagram',
   tripadvisor: 'Tripadvisor',
   facebook: 'Facebook',
-  instagram: 'Instagram',
   custom: 'Website',
+}
+
+/**
+ * Instagram is a caption, not a review.
+ *
+ * Pasting four sentences of Google-style prose under a photo reads as a
+ * different species of text. The customer is offered a short version instead,
+ * generated from the same feedback.
+ */
+export function wantsCaption(kind: DestinationKind): boolean {
+  return kind === 'instagram'
 }
 
 export type OutletDestinations = { outletId: string; destinations: Destination[] }

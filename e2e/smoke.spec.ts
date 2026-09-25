@@ -94,28 +94,51 @@ test.describe('customer experience', () => {
 
     await useIt.click()
     await expect(page.getByRole('heading', { name: /Where would you like to post it/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Post on Google/ })).toBeVisible()
+    // one "Post on X" button per platform became Share + Copy per platform
+    await expect(page.getByText('Google', { exact: true }).first()).toBeVisible()
     await expect(page.getByRole('button', { name: 'Keep it private' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Keep it private' }).click()
     await expect(page.getByRole('heading', { name: /Thank you/ })).toBeVisible()
   })
 
-  test('asks a critical customer what to improve, and never blocks posting', async ({ page }) => {
+  test('a happy customer gets Share and Copy for every configured platform', async ({ page }) => {
+    await fresh(page, '/r/demo')
+    await page.getByRole('radio', { name: '5 stars' }).click()
+    await page.getByRole('button', { name: 'Next' }).click()
+    await page.getByPlaceholder('Tell us what you liked or what we could improve...').fill('The cheesecake was lovely.')
+    await page.getByRole('button', { name: /Create My Review/ }).click()
+    await expect(page.getByRole('button', { name: /Use This Review/ })).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('button', { name: /Use This Review/ }).click()
+
+    // Share uses the device where it can and falls back to copying; both are
+    // offered rather than one "Post on X" button that only ever opened a tab.
+    await expect(page.getByRole('button', { name: 'Share', exact: true }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /Copy & open/ }).first()).toBeVisible()
+    // Instagram asks for a caption instead of reusing the long review
+    await expect(page.getByRole('button', { name: /Generate Instagram caption/ })).toBeVisible()
+  })
+
+  test('keeps a critical customer private, and never drafts a review for them', async ({ page }) => {
+    // This reverses what this test asserted before, on the product owner's
+    // instruction: below four stars the journey ends with the team rather than
+    // on a public platform. Worth knowing that this is review gating, which
+    // Google's review policies and the FTC's consumer-review rule both address
+    // — PUBLIC_THRESHOLD in ReviewFlow is the single line that decides it.
     await fresh(page, '/r/demo')
     await page.getByRole('radio', { name: '2 stars' }).click()
     await page.getByRole('button', { name: 'Next' }).click()
 
     await expect(page.getByRole('heading', { name: 'What could be better?' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Waiting time' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Create My Review/ })).toHaveCount(0)
 
     await page.getByPlaceholder('Tell us what you liked or what we could improve...').fill('Service was slow.')
-    await page.getByRole('button', { name: /Create My Review/ }).click()
-    await expect(page.getByRole('button', { name: /Use This Review/ })).toBeVisible({ timeout: 15_000 })
-    await page.getByRole('button', { name: /Use This Review/ }).click()
+    await page.getByRole('button', { name: /Send feedback/ }).click()
 
-    // a low rating still reaches every destination — nothing is suppressed
-    await expect(page.getByRole('button', { name: /Post on Google/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Thank you/ })).toBeVisible()
+    await expect(page.getByText(/nothing has been posted publicly/i)).toBeVisible()
+    await expect(page.getByRole('button', { name: /Share/ })).toHaveCount(0)
   })
 
   test('an unknown code never reveals a business', async ({ page }) => {

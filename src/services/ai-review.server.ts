@@ -1,5 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { LocalAIReviewService, REVIEW_SYSTEM_PROMPT, buildReviewPrompt, groundingIssues } from './ai-review'
+import {
+  CAPTION_SYSTEM_PROMPT,
+  LocalAIReviewService,
+  REVIEW_SYSTEM_PROMPT,
+  buildReviewPrompt,
+  groundingIssues,
+} from './ai-review'
 import type { AIReviewService, ReviewDraft, ReviewDraftInput } from './types'
 
 /**
@@ -23,10 +29,11 @@ export class ClaudeReviewService implements AIReviewService {
   async draftReview(input: ReviewDraftInput): Promise<ReviewDraft> {
     try {
       const client = new Anthropic({ apiKey: this.apiKey })
+      const caption = input.format === 'caption'
       const message = await client.messages.create({
         model: this.model,
-        max_tokens: 400,
-        system: REVIEW_SYSTEM_PROMPT,
+        max_tokens: caption ? 150 : 400,
+        system: caption ? CAPTION_SYSTEM_PROMPT : REVIEW_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: buildReviewPrompt(input) }],
       })
 
