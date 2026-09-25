@@ -196,19 +196,24 @@ test('an invitation link refuses rather than breaking when it means nothing', as
 })
 
 test.describe('authentication', () => {
-  test('the sign-in screen offers the real ways in', async ({ page }) => {
-    await page.goto('/login')
-    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
-    await expect(page.getByLabel('Work email')).toBeVisible()
-    await expect(page.getByLabel('Password')).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Create an account' })).toBeVisible()
+  test('there is no sign-in screen, because there are no accounts', async ({ page }) => {
+    // A form that accepts any password and opens the same workspace is not a
+    // sign-in. Demo mode sends you where you were going instead.
+    for (const path of ['/login', '/signup', '/forgot-password']) {
+      await page.goto(path)
+      await expect(page, `${path} should not stop at a login form`).toHaveURL(/\/app$/)
+    }
   })
 
-  test('password reset screens are reachable and never 404', async ({ page }) => {
-    const forgot = await page.goto('/forgot-password')
-    expect(forgot?.status()).toBe(200)
-    await expect(page.getByRole('heading', { name: 'Reset your password' })).toBeVisible()
+  test('the marketing header offers the dashboard, not an account', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByRole('link', { name: 'Open dashboard' }).first()).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Log in' })).toHaveCount(0)
+  })
 
+  test('the password reset landing is still reachable and never 404s', async ({ page }) => {
+    // Not one of the signed-out-only screens: it is where an emailed link
+    // lands, and it has to render whatever mode the deployment is in.
     const reset = await page.goto('/reset-password')
     expect(reset?.status()).toBe(200)
     await expect(page.getByRole('heading', { name: 'Choose a new password' })).toBeVisible()

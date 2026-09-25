@@ -38,7 +38,24 @@ export async function middleware(request: NextRequest) {
   // Demo mode lets the dashboard through on seeded data; unconfigured lets the
   // route render its own "not configured" page rather than bouncing to a login
   // form that cannot work either.
-  if (current !== 'live') return NextResponse.next()
+  if (current !== 'live') {
+    /*
+     * Demo mode has no accounts, so it has no sign-in. A form that takes any
+     * password and opens the same workspace is not a login, it is a locked door
+     * with the key taped to it — and it is the screen people got stuck on. Send
+     * them where they were going instead.
+     *
+     * Only demo mode. Unconfigured deployments keep these pages, because the
+     * screens themselves are what explain that nothing is configured.
+     */
+    if (current === 'demo' && isSignedOutOnlyPath(pathname)) {
+      const app = request.nextUrl.clone()
+      app.pathname = '/app'
+      app.search = ''
+      return NextResponse.redirect(app)
+    }
+    return NextResponse.next()
+  }
 
   // One response object throughout: the Supabase client writes refreshed auth
   // cookies onto it, and returning a different one would drop them.

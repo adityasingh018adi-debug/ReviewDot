@@ -7,6 +7,7 @@ import { Menu, Moon, Sun, X } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 import { ButtonLink } from '@/components/ui/Button'
 import { useTheme } from '@/lib/theme'
+import { isDemo } from '@/lib/app-mode'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
@@ -17,6 +18,10 @@ const LINKS = [
 ]
 
 export function SiteNav() {
+  // Demo deployments have no accounts, so there is nothing to log in to and
+  // nothing to sign up for. NEXT_PUBLIC_* is inlined at build time, so this is
+  // the same answer here as it is on the server.
+  const demo = isDemo()
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const pathname = usePathname()
@@ -63,15 +68,23 @@ export function SiteNav() {
           >
             {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
           </button>
-          <Link
-            href="/login"
-            className="hidden rounded-xl px-3 py-2 text-[14px] font-medium text-ink transition-colors hover:bg-raised sm:block"
-          >
-            Log in
-          </Link>
-          <ButtonLink href="/signup" size="sm" className="hidden sm:inline-flex">
-            Start Free
-          </ButtonLink>
+          {demo ? (
+            <ButtonLink href="/app" size="sm">
+              Open dashboard
+            </ButtonLink>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="hidden rounded-xl px-3 py-2 text-[14px] font-medium text-ink transition-colors hover:bg-raised sm:block"
+              >
+                Log in
+              </Link>
+              <ButtonLink href="/signup" size="sm" className="hidden sm:inline-flex">
+                Start Free
+              </ButtonLink>
+            </>
+          )}
           <button
             onClick={() => setOpen((value) => !value)}
             aria-label={open ? 'Close menu' : 'Open menu'}
@@ -97,12 +110,25 @@ export function SiteNav() {
               </Link>
             ))}
             <div className="mt-2 flex gap-2">
-              <ButtonLink href="/login" variant="secondary" className="flex-1" onClick={() => setOpen(false)}>
-                Log in
-              </ButtonLink>
-              <ButtonLink href="/signup" className="flex-1" onClick={() => setOpen(false)}>
-                Start Free
-              </ButtonLink>
+              {demo ? (
+                <ButtonLink href="/app" className="flex-1" onClick={() => setOpen(false)}>
+                  Open dashboard
+                </ButtonLink>
+              ) : (
+                <>
+                  <ButtonLink
+                    href="/login"
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => setOpen(false)}
+                  >
+                    Log in
+                  </ButtonLink>
+                  <ButtonLink href="/signup" className="flex-1" onClick={() => setOpen(false)}>
+                    Start Free
+                  </ButtonLink>
+                </>
+              )}
             </div>
           </div>
         </div>
