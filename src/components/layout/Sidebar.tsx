@@ -81,7 +81,13 @@ export const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
 
 export const NAV_ITEMS = NAV_SECTIONS.flatMap((section) => section.items)
 
-export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function Sidebar({
+  onNavigate,
+  unreviewed = 0,
+}: {
+  onNavigate?: () => void
+  unreviewed?: number
+}) {
   const pathname = usePathname()
 
   return (
@@ -114,6 +120,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               const active = item.end
                 ? pathname === item.href
                 : Boolean(pathname?.startsWith(item.href))
+              // 99+ rather than a number that widens the rail
+              const countBadge = item.href === '/app/feedback' && unreviewed > 0
+              const badge = countBadge ? (unreviewed > 99 ? '99+' : String(unreviewed)) : item.badge
               return (
                 <Link
                   key={item.href}
@@ -142,14 +151,20 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 >
                   <item.icon size={17} strokeWidth={1.9} />
                   <span className="flex-1 truncate">{item.label}</span>
-                  {item.badge ? (
+                  {badge ? (
                     <span
                       className={cn(
-                        'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-                        active ? 'bg-white/20 text-on-accent' : 'bg-accent-soft text-accent',
+                        'rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums',
+                        // A count of unread complaints is a number to act on,
+                        // not a brand flourish; amber says so without shouting.
+                        countBadge
+                          ? 'bg-[color-mix(in_srgb,var(--color-warn)_18%,transparent)] text-warn'
+                          : active
+                            ? 'bg-white/20 text-on-accent'
+                            : 'bg-accent-soft text-accent-text',
                       )}
                     >
-                      {item.badge}
+                      {badge}
                     </span>
                   ) : null}
                 </Link>

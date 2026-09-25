@@ -7,9 +7,11 @@ import { initialsOf } from '@/components/layout/initials'
 import type { UiSession } from '@/components/layout/SessionProvider'
 import { getWorkspaceSession } from '@/services/auth.server'
 import { dashboardContext } from '@/services/dashboard-context.server'
+import { scopeFromParams } from '@/services/scope'
 import { appMode } from '@/lib/app-mode'
 import { AuthUnavailableError } from '@/lib/auth-outcome'
 import { business } from '@/lib/data'
+import { DemoDashboardRepo } from '@/services/dashboard.demo'
 
 export const metadata: Metadata = {
   title: { default: 'Dashboard', template: '%s · ReviewDot' },
@@ -57,7 +59,15 @@ export default async function Layout({ children }: { children: React.ReactNode }
       assignedOutletIds: [],
       outlets: [],
     }
-    return <AppLayout session={session}>{children}</AppLayout>
+    const demoCount = await new DemoDashboardRepo()
+      .feedbackStatusCounts(scopeFromParams({}))
+      .then((counts) => counts.new)
+      .catch(() => 0)
+    return (
+      <AppLayout session={session} unreviewed={demoCount}>
+        {children}
+      </AppLayout>
+    )
   }
 
   // The session read is the one thing this layout does that can fail for a
@@ -83,6 +93,20 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const context = await dashboardContext()
   const outlets = await context.repo.outletOptions().catch(() => [])
 
+  /*
+   * Feedback nobody has looked at yet, counted here so the number is on screen
+   * without anyone opening the page to discover it. A complaint sitting unread
+   * is the one thing on this dashboard with a clock on it.
+   *
+   * Scoped to the default window, like every other figure the dashboard opens
+   * with, and failing to zero: a badge is a prompt, not a fact worth breaking
+   * the whole layout over.
+   */
+  const unreviewed = await context.repo
+    .feedbackStatusCounts(scopeFromParams({}))
+    .then((counts) => counts.new)
+    .catch(() => 0)
+
   const fullName = workspace.user.fullName?.trim() || workspace.user.email
   const session: UiSession = {
     mode,
@@ -105,5 +129,9 @@ export default async function Layout({ children }: { children: React.ReactNode }
     outlets,
   }
 
-  return <AppLayout session={session}>{children}</AppLayout>
+  return (
+    <AppLayout session={session} unreviewed={unreviewed}>
+      {children}
+    </AppLayout>
+  )
 }

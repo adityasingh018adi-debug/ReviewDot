@@ -9,9 +9,12 @@ import { SessionProvider, type UiSession } from './SessionProvider'
 export function AppLayout({
   session,
   children,
+  unreviewed = 0,
 }: {
   session: UiSession
   children: React.ReactNode
+  /** Feedback nobody has read yet, shown on the Feedback nav item. */
+  unreviewed?: number
 }) {
   const [navOpen, setNavOpen] = useState(false)
 
@@ -20,7 +23,7 @@ export function AppLayout({
     <div className="flex min-h-screen bg-canvas">
       <aside className="hidden w-64 shrink-0 lg:block">
         <div className="sticky top-0 h-screen">
-          <Sidebar />
+          <Sidebar unreviewed={unreviewed} />
         </div>
       </aside>
 
@@ -41,7 +44,7 @@ export function AppLayout({
               exit={{ x: -280 }}
               transition={{ type: 'spring', stiffness: 320, damping: 32 }}
             >
-              <Sidebar onNavigate={() => setNavOpen(false)} />
+              <Sidebar unreviewed={unreviewed} onNavigate={() => setNavOpen(false)} />
             </motion.div>
           </div>
         ) : null}
