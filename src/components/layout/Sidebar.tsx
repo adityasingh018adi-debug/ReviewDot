@@ -85,7 +85,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
 
   return (
-    <div className="flex h-full flex-col border-r border-line bg-surface">
+    <div className="flex h-full flex-col border-r border-line bg-sidebar">
       <div className="flex items-center gap-2.5 px-5 pb-4 pt-5">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent text-on-accent">
           <Star size={18} strokeWidth={2.4} fill="currentColor" />
@@ -133,7 +133,10 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                   className={cn(
                     'flex items-center gap-3 rounded-xl px-3 py-2 text-[13.5px] font-medium transition-colors duration-150',
                     active
-                      ? 'bg-accent text-on-accent shadow-soft'
+                      // Dark mode tints rather than fills: a solid purple bar
+                      // repeated down the rail is most of the purple on screen,
+                      // and it is the least informative place to spend it.
+                      ? 'bg-accent text-on-accent shadow-soft dark:bg-accent-soft dark:text-accent-text dark:shadow-none'
                       : 'text-muted hover:bg-raised hover:text-ink',
                   )}
                 >
@@ -163,7 +166,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
 function UpgradeCard() {
   return (
-    <div className="m-4 mt-0 rounded-2xl bg-gradient-to-br from-brand-700 to-brand-500 p-4 text-white">
+    <div className="accent-gradient m-4 mt-0 rounded-2xl p-4 text-white">
       <p className="flex items-center gap-2 text-[13px] font-semibold">
         <Crown size={15} strokeWidth={2.2} /> Upgrade your plan
       </p>

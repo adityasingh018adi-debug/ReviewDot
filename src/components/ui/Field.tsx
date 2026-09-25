@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const base =
-  'w-full rounded-2xl border border-line bg-surface px-4 text-sm text-ink placeholder:text-faint transition-colors duration-200 focus:border-accent focus:outline-none'
+  'w-full rounded-2xl border border-line bg-field px-4 text-sm text-ink placeholder:text-faint transition-colors duration-200 focus:border-accent focus:outline-none'
 
 export function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
   return (

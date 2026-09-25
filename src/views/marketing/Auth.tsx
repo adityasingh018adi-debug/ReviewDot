@@ -50,8 +50,21 @@ function AuthShell({
 }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="flex flex-col justify-center px-6 py-12 sm:px-12">
-        <div className="mx-auto w-full max-w-sm">
+      <div className="relative flex flex-col justify-center px-6 py-12 sm:px-12">
+        {/*
+          A single soft light behind the card, dark mode only. On a near-black
+          canvas a flat panel reads as an error state; this gives the page a
+          centre without putting a border or a box around anything.
+        */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 hidden dark:block"
+          style={{
+            background:
+              'radial-gradient(58% 46% at 50% 34%, color-mix(in srgb, var(--color-accent) 20%, transparent), transparent 72%)',
+          }}
+        />
+        <div className="relative mx-auto w-full max-w-sm">
           <Logo />
           <h1 className="mt-10 text-[28px] font-semibold tracking-tight text-ink">{title}</h1>
           <p className="mt-2 text-[14px] leading-relaxed text-muted">{subtitle}</p>

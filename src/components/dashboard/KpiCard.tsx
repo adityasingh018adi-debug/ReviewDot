@@ -53,7 +53,7 @@ export function KpiCard({
           <Sparkline
             values={series}
             width={92}
-            color={positive ? 'var(--color-chart-1)' : 'var(--color-danger)'}
+            color={positive ? 'var(--color-success)' : 'var(--color-danger)'}
           />
         ) : null}
       </div>

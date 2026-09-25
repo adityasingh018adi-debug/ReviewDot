@@ -106,7 +106,7 @@ export function ProductsLive({
                     <td className="px-2 py-3 text-right text-[14px] font-medium tabular-nums text-ink">
                       {product.rating === null ? '—' : `${product.rating.toFixed(1)}★`}
                     </td>
-                    <td className="px-2 py-3 text-right text-[14px] tabular-nums text-accent">
+                    <td className="px-2 py-3 text-right text-[14px] tabular-nums text-success">
                       {product.reviews ? formatPercent(product.positive / product.reviews, 0) : '—'}
                     </td>
                     <td className="px-2 py-3 text-right text-[14px] tabular-nums text-ink-soft">

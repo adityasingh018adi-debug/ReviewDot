@@ -8,6 +8,8 @@
 @import '@fontsource/space-grotesk/700.css';
 @import '@fontsource/caveat/500.css';
 
+@custom-variant dark ([data-theme='dark'] &);
+
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: 'Space Grotesk', 'Inter', ui-sans-serif, system-ui, sans-serif;
@@ -73,6 +75,10 @@
   --color-canvas: #f7f9f8;
   --color-surface: #ffffff;
   --color-raised: #f2f6f4;
+  /* Sidebar and inputs sit on their own steps so dark mode can separate them
+     from cards; in light they are simply the surface colour. */
+  --color-sidebar: #ffffff;
+  --color-field: #ffffff;
   --color-ink: #0b0d0c;
   --color-ink-soft: #3d4542;
   --color-muted: #6b736e;
@@ -80,8 +86,17 @@
   --color-line: #e6eae8;
   --color-line-strong: #d7ddda;
   --color-accent: #0c6145;
+  /* The far end of the primary-button gradient. Nearly the same hue in light,
+     so the button reads flat; dark opens it into purple → indigo. */
+  --color-accent-to: #0f7b54;
   --color-accent-soft: #eefbf4;
+  /* Accent as *text*. The accent itself is tuned for a filled background and
+     is too dark to read on one. */
+  --color-accent-text: #0c6145;
   --color-on-accent: #ffffff;
+  /* "Good" as a meaning, not as the brand colour. Kept green in both themes:
+     a rising figure should not turn purple because the accent did. */
+  --color-success: #199c6b;
 
   --shadow-soft: 0 1px 2px rgb(11 13 12 / 0.04), 0 8px 24px -12px rgb(11 13 12 / 0.12);
   --shadow-card: 0 1px 3px rgb(11 13 12 / 0.05), 0 12px 32px -16px rgb(11 13 12 / 0.18);
@@ -137,29 +152,65 @@
   }
 }
 
+/*
+ * Dark theme — midnight navy surfaces, electric purple brand.
+ *
+ * Five steps of surface, not one: canvas, sidebar, field, card, raised. Pure
+ * black is deliberately avoided — it flattens the interface and makes every
+ * elevation read the same.
+ *
+ * Roughly 75% neutral dark, 15% typography, 7% brand, 3% status. Purple earns
+ * its weight by being scarce: it belongs to the primary action, the selected
+ * nav item and the primary data series, and nowhere else.
+ */
 [data-theme='dark'] {
-  --color-canvas: #080a09;
-  --color-surface: #0e1211;
-  --color-raised: #141917;
-  --color-ink: #f2f4f2;
-  --color-ink-soft: #cdd4d0;
-  --color-muted: #9aa49f;
-  --color-faint: #717c77;
-  --color-line: #1d2422;
-  --color-line-strong: #2a332f;
-  --color-accent: #34bc85;
-  --color-accent-soft: #0d1f18;
-  --color-on-accent: #04140d;
+  --color-canvas: #07090f;
+  --color-sidebar: #090d16;
+  --color-field: #0d131e;
+  --color-surface: #111722;
+  --color-raised: #161d2a;
+  --color-ink: #f8fafc;
+  --color-ink-soft: #cbd5e1;
+  --color-muted: #94a3b8;
+  /*
+   * #64748b was the brief's value and it lands at 4.18:1 on the canvas and
+   * 3.77:1 on a card — under AA for body text, and this token carries
+   * placeholders and captions, not only disabled state. Lifted to the nearest
+   * shade that clears 4.5 on both (5.33 and 4.81).
+   */
+  --color-faint: #78859a;
+  --color-line: #242c3a;
+  --color-line-strong: #30394a;
+  --color-accent: #7c3aed;
+  --color-accent-to: #4f46e5;
+  --color-accent-soft: #19162b;
+  --color-accent-text: #a78bfa;
+  --color-on-accent: #ffffff;
+  --color-success: #22c55e;
 
-  --color-chart-1: #23a877;
-  --color-chart-2: #3987e5;
-  --color-chart-3: #c98500;
-  --color-rank-1: #a9e9c8;
-  --color-rank-2: #6fd6a6;
-  --color-rank-3: #34bc85;
-  --color-rank-4: #199c6b;
-  --color-rank-5: #0b4c37;
-  --color-grid: #1d2422;
+  /*
+   * Charts. The brief paired #8b5cf6 with #6366f1 for the first two series;
+   * measured, that is ΔE 14.5 normally and ΔE 3.1 under deuteranopia — the
+   * same line twice for roughly one man in twelve. Purple keeps the primary
+   * series and the secondary moves to sky, which holds ΔE 52.7 / 11.4 and
+   * reads brighter against the card besides. Indigo is not lost: it is the
+   * other half of the button gradient, where nothing has to be told apart.
+   */
+  --color-chart-1: #8b5cf6;
+  --color-chart-2: #38bdf8;
+  --color-chart-3: #f59e0b;
+  /* Ordinal ramp, 5★ → 1★: one hue, lightness falling 87 → 37 */
+  --color-rank-1: #ddd6fe;
+  --color-rank-2: #c4b5fd;
+  --color-rank-3: #a78bfa;
+  --color-rank-4: #8b5cf6;
+  --color-rank-5: #6d28d9;
+  --color-grid: #202938;
+
+  --color-star: #fbbf24;
+  --color-danger: #ef4444;
+  --color-warn: #f59e0b;
+  --color-info: #3b82f6;
 
   --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.6);
   --shadow-card: 0 1px 3px rgb(0 0 0 / 0.5), 0 12px 32px -16px rgb(0 0 0 / 0.7);
@@ -181,8 +232,10 @@ body {
 }
 
 ::selection {
-  background: var(--color-brand-200);
-  color: var(--color-brand-950);
+  /* Derived from the accent so it follows the theme instead of pinning the
+     green brand ramp onto a purple dark mode. */
+  background: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  color: var(--color-ink);
 }
 
 :focus-visible {
@@ -207,6 +260,12 @@ body {
   margin-inline: auto;
   max-width: 76rem;
   padding-inline: 1.25rem;
+}
+
+/* Primary action. Flat in light (both stops are near-identical), purple →
+   indigo in dark, where the brand should actually assert itself. */
+@utility accent-gradient {
+  background-image: linear-gradient(135deg, var(--color-accent), var(--color-accent-to));
 }
 
 @utility hairline {

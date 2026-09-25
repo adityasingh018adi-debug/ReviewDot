@@ -6,4 +6,4 @@
  * project several rounds of debugging a fault that had already been fixed.
  * /api/health reports it.
  */
-export const BUILD_LABEL = 'no-login-nav'
+export const BUILD_LABEL = 'dark-theme'
