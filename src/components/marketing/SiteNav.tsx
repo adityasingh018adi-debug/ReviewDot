@@ -18,9 +18,17 @@ const LINKS = [
 ]
 
 export function SiteNav() {
-  // Demo deployments have no accounts, so there is nothing to log in to and
-  // nothing to sign up for. NEXT_PUBLIC_* is inlined at build time, so this is
-  // the same answer here as it is on the server.
+  /*
+   * No "Log in" in the header, in any mode.
+   *
+   * It is still reachable at /login, and live mode still sends an
+   * unauthenticated visitor there — taking the route away would make the
+   * dashboard unreachable. This only stops the marketing site advertising it.
+   *
+   * Demo mode goes further and has no sign-up either, because it has no
+   * accounts at all. NEXT_PUBLIC_* is inlined at build time, so this is the
+   * same answer here as it is on the server.
+   */
   const demo = isDemo()
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -73,17 +81,9 @@ export function SiteNav() {
               Open dashboard
             </ButtonLink>
           ) : (
-            <>
-              <Link
-                href="/login"
-                className="hidden rounded-xl px-3 py-2 text-[14px] font-medium text-ink transition-colors hover:bg-raised sm:block"
-              >
-                Log in
-              </Link>
-              <ButtonLink href="/signup" size="sm" className="hidden sm:inline-flex">
-                Start Free
-              </ButtonLink>
-            </>
+            <ButtonLink href="/signup" size="sm" className="hidden sm:inline-flex">
+              Start Free
+            </ButtonLink>
           )}
           <button
             onClick={() => setOpen((value) => !value)}
@@ -110,25 +110,13 @@ export function SiteNav() {
               </Link>
             ))}
             <div className="mt-2 flex gap-2">
-              {demo ? (
-                <ButtonLink href="/app" className="flex-1" onClick={() => setOpen(false)}>
-                  Open dashboard
-                </ButtonLink>
-              ) : (
-                <>
-                  <ButtonLink
-                    href="/login"
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() => setOpen(false)}
-                  >
-                    Log in
-                  </ButtonLink>
-                  <ButtonLink href="/signup" className="flex-1" onClick={() => setOpen(false)}>
-                    Start Free
-                  </ButtonLink>
-                </>
-              )}
+              <ButtonLink
+                href={demo ? '/app' : '/signup'}
+                className="flex-1"
+                onClick={() => setOpen(false)}
+              >
+                {demo ? 'Open dashboard' : 'Start Free'}
+              </ButtonLink>
             </div>
           </div>
         </div>
